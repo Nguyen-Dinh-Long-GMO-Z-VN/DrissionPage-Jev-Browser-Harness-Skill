@@ -124,6 +124,32 @@ def main():
         assert value == "Generated", repr(value)
         assert any(a.get("role") == "option" for a in page["actions"])
         passed.append("real text input waits for asynchronous combobox suggestions")
+
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <div style="height:600px"></div>
+          <button id="low" onclick="window.lowHit=(window.lowHit||0)+1">Low</button>
+          <div style="height:400px"></div>"""))
+        page = browser.observe(screenshot=False)
+        low = next(a for a in page["actions"] if a["label"] == "Low")
+        browser.evaluate("document.body.insertAdjacentHTML('afterbegin','<div style=height:200px></div>')")
+        browser.act(low, page)
+        assert browser.evaluate("window.lowHit") == 1
+        passed.append("scroll-into-view rescues a target pushed out of the viewport")
+
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <button id="wide" style="width:500px;height:60px"
+            onclick="window.wideHit=(window.wideHit||0)+1">Wide</button>"""))
+        page = browser.observe(screenshot=False)
+        wide = next(a for a in page["actions"] if a["label"] == "Wide")
+        browser.evaluate("""const r=document.querySelector('#wide').getBoundingClientRect();
+          const d=document.createElement('div');
+          d.style.cssText=`position:fixed;left:${r.left+r.width/2-60}px;top:${r.top-5}px;
+            width:120px;height:70px;z-index:5;background:red`;
+          document.body.append(d)""")
+        browser.act(wide, page)
+        assert browser.evaluate("window.wideHit") == 1
+        passed.append("click escapes a midpoint cover via a clear interior point")
+
         browser.call("Page.navigate", url="about:blank")
         assert not browser.fresh(page, field)
         passed.append("navigation invalidates the old document")

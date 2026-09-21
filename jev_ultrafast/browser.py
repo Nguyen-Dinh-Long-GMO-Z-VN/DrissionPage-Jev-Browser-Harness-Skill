@@ -25,6 +25,9 @@ class Browser:
         self.call("Emulation.setDeviceMetricsOverride", width=1120, height=780, deviceScaleFactor=1, mobile=False)
         # Keep rAF/menus rendering in an owned background tab, without activating the user's Chrome tab.
         self.call("Emulation.setFocusEmulationEnabled", enabled=True)
+        # Start network recording at attach, before any traffic: sessions attached
+        # directly get no daemon auto-enable, and undrained events buffer bounded.
+        self.call("Network.enable")
         self.call("Page.navigate", url=url)
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
@@ -74,16 +77,26 @@ class Browser:
                 )
             except RuntimeError:
                 pass
-        for attempt in range(10):
+        deadline = time.monotonic() + 15
+        while True:
             try:
                 return browser_operation(
                     {"operation": "observe", "session": self.session, "screenshot": screenshot}
                 )
             except StalePage:
-                if attempt == 9:
+                if time.monotonic() > deadline:
                     raise
+                self._wait_ready()
                 time.sleep(0.02)
-        raise StalePage("Page did not settle")
+
+    def _wait_ready(self):
+        # Transient mutations return immediately; real navigations wait out the load.
+        try:
+            if self.evaluate("document.readyState") == "complete":
+                return
+        except StalePage:
+            pass
+        time.sleep(0.05)
 
     def fresh(self, page, action=None):
         if action is not None and action["kind"] in {"click", "select"}:
@@ -146,9 +159,18 @@ def browser_operation(request):
               if (!e?.isConnected || e.matches(':disabled') || e.closest('[aria-disabled="true"],[inert]') ||
                   !e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})) return null;
               if (action.kind==='fill' && (e.readOnly || e.getAttribute('aria-readonly')==='true')) return null;
-              const r=e.getBoundingClientRect(), x=r.x+r.width/2, y=r.y+r.height/2;
-              if (!r.width || !r.height || x<0 || y<0 || x>=innerWidth || y>=innerHeight) return null;
-              if (!e.contains(document.elementFromPoint(x,y))) return null;
+              if (e.scrollIntoViewIfNeeded) e.scrollIntoViewIfNeeded(true);
+              else e.scrollIntoView({block:'center',inline:'center'});
+              const r=e.getBoundingClientRect();
+              if (!r.width || !r.height) return null;
+              const pts=[[r.left+r.width/2, r.top+r.height/2]];
+              for (let i=0;i<12;i++) pts.push([r.left+Math.random()*r.width, r.top+Math.random()*r.height]);
+              let target=null;
+              for (const [x,y] of pts) {
+                if (x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;
+                if (e.contains(document.elementFromPoint(x,y))) { target={x,y}; break; }
+              }
+              if (!target) return null;
               if (action.kind==='select') {
                 if (e.tagName!=='SELECT' || ![...e.options].some(o=>o.value===action.value &&
                     !o.disabled && !o.closest('optgroup[disabled]'))) return null;
@@ -156,7 +178,7 @@ def browser_operation(request):
                 e.dispatchEvent(new Event('input',{bubbles:true}));
                 e.dispatchEvent(new Event('change',{bubbles:true}));
               }
-              return {x,y};
+              return target;
             })(""" + json.dumps(action) + ")")
             if target is None:
                 if kind == "select":
