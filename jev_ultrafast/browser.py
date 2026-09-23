@@ -13,6 +13,7 @@ from browser_harness.helpers import cdp
 READ_STATE = Path(__file__).with_name("snapshot.js").read_text()
 MARKER = f"(() => {{ const state={READ_STATE}; return state?.marker ?? null; }})()"
 
+
 class StalePage(ValueError):
     """A decision no longer refers to the observed page."""
 
@@ -34,6 +35,15 @@ class Browser:
             if self.evaluate("document.readyState") == "complete":
                 break
             time.sleep(0.02)
+
+    @classmethod
+    def from_session(cls, session):
+        """Wrap a tab someone else attached. close() leaves the tab alone; the caller detaches the session."""
+        browser = cls.__new__(cls)
+        browser.target, browser.session, browser.after_input = None, session, None
+        browser.call("Emulation.setFocusEmulationEnabled", enabled=True)
+        browser.call("Network.enable")  # the daemon only auto-enables its own sessions
+        return browser
 
     def call(self, method, **params):
         return cdp(method, session_id=self.session, **params)
@@ -88,6 +98,26 @@ class Browser:
                     raise
                 self._wait_ready()
                 time.sleep(0.02)
+
+    def settle(self, page, screenshot=False, *, young_ms=2500, quiet=0.1, cap=0.5):
+        """Return a page that has held still for `quiet` seconds, re-observing while it changes.
+
+        Freshly loaded documents keep mutating for ~100 ms as their scripts initialise. A decision made on
+        that state goes stale and costs a whole model call (0.3-1.2 s), so wait out the churn locally first.
+        Older documents skip this entirely; their changes come from our own input, which observe() waits for.
+        """
+        if page.get("age", young_ms) >= young_ms:
+            return page
+        deadline = time.monotonic() + cap
+        stable_since = time.monotonic()
+        while time.monotonic() < deadline:
+            time.sleep(0.03)
+            if not self.fresh(page):
+                page = self.observe(screenshot=screenshot)
+                stable_since = time.monotonic()
+            elif time.monotonic() - stable_since >= quiet:
+                break
+        return page
 
     def _wait_ready(self):
         # Transient mutations return immediately; real navigations wait out the load.

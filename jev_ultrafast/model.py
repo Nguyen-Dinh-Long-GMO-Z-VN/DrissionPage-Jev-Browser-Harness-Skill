@@ -3,6 +3,7 @@
 import json
 import math
 import os
+import threading
 import time
 
 import httpx
@@ -10,12 +11,57 @@ import httpx
 from .questions import NEXT_ACTION, TARGET, TEXT_VALUE
 
 CLIENT = httpx.Client(http2=True, timeout=25)
+TYPESAFE_URL = "https://api.typesafe.ai/v1/systemone"
+DEFAULT_TEXT_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_TEXT_MODEL = "inception/mercury-2.5"
+
+
+class MissingValue(ValueError):
+    """The goal does not contain a value for the selected field. Nothing is typed or guessed."""
+
+
+def warm_connections():
+    """Open the TLS/HTTP2 connections before the first decision needs them.
+
+    A cold first TypeSafe request measured ~1.2 s against ~0.3 s once warm. The probe is a bodyless HEAD,
+    so it never reaches a model; any response or error is ignored.
+    """
+
+    def probe():
+        urls = [TYPESAFE_URL]
+        if os.environ.get("TEXT_MODEL_API_KEY"):
+            urls.append(os.environ.get("TEXT_MODEL_BASE_URL", DEFAULT_TEXT_BASE_URL).rstrip("/") + "/models")
+        for url in urls:
+            try:
+                CLIENT.head(url, timeout=5)
+            except httpx.HTTPError:
+                pass
+
+    threading.Thread(target=probe, daemon=True).start()
+
+
+def error_detail(response):
+    """The provider's message, short enough to read. Quota and rate-limit reasons sit at the end, so keep both ends."""
+    try:
+        error = response.json()
+        error = error[0] if isinstance(error, list) else error
+        text = error["error"]["message"]
+    except (ValueError, KeyError, IndexError, TypeError):
+        text = response.text
+    text = " ".join(str(text).split())
+    return text if len(text) <= 300 else text[:100] + " ... " + text[-200:]
 
 
 def post_json(url, key, body):
     for attempt in range(3):
         try:
             response = CLIENT.post(url, json=body, headers={"Authorization": f"Bearer {key}"})
+        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.RemoteProtocolError):
+            # The request never reached the provider (or its connection dropped); no browser action is involved.
+            if attempt < 2:
+                time.sleep(0.5 * 2**attempt)
+                continue
+            raise RuntimeError("Model connection failed; no action executed.") from None
         except httpx.HTTPError:
             raise RuntimeError("Model connection failed; no action executed.") from None
         if response.status_code in {429, 529, 503} and attempt < 2:
@@ -23,8 +69,7 @@ def post_json(url, key, body):
             continue
         if response.is_error:
             raise RuntimeError(
-                f"Model provider returned HTTP {response.status_code}: "
-                f"{response.text[:300]}; no action executed."
+                f"Model provider returned HTTP {response.status_code}: {error_detail(response)}; no action executed."
             )
         return response.json()
     raise RuntimeError("Model unavailable")
@@ -119,7 +164,10 @@ def choose(state, goal, history):
         "questions": questions,
     }
     started = time.perf_counter()
-    result = post_json("https://api.typesafe.ai/v1/systemone", os.environ["TYPESAFE_API_KEY"], body)
+    key = os.environ.get("TYPESAFE_API_KEY")
+    if not key:
+        raise ValueError("Choosing an action needs TYPESAFE_API_KEY; set it in .env. No action executed.")
+    result = post_json(TYPESAFE_URL, key, body)
     operation_answer = validate_choice(result["answers"].get("operation", {}), operations)
     operation = operation_answer["choice"]
     target = None
@@ -164,8 +212,8 @@ def field_text(context):
     key = os.environ.get("TEXT_MODEL_API_KEY")
     if not key:
         raise ValueError("TYPE_TEXT needs TEXT_MODEL_API_KEY; no text is hardcoded or guessed by the executor.")
-    base = os.environ.get("TEXT_MODEL_BASE_URL", "https://api.deepseek.com/v1").rstrip("/")
-    model = os.environ.get("TEXT_MODEL", "deepseek-chat")
+    base = os.environ.get("TEXT_MODEL_BASE_URL", DEFAULT_TEXT_BASE_URL).rstrip("/")
+    model = os.environ.get("TEXT_MODEL", DEFAULT_TEXT_MODEL)
     if "api.deepseek.com/" in base:
         reasoning = {"thinking": {"type": "disabled"}}
     elif "generativelanguage.googleapis.com/" in base:
@@ -196,8 +244,14 @@ def field_text(context):
     try:
         output = json.loads(result["choices"][0]["message"]["content"])
         value = output["text"]
+        if output == {"text": None}:
+            # The instructions ask for null when the goal lacks the value. That is a clear stop, not a bad answer.
+            label = context.get("field", {}).get("label")
+            raise MissingValue(f"The goal has no value for field {label!r}; nothing typed.")
         if set(output) != {"text"} or not isinstance(value, str) or not value.strip() or len(value) > 2000:
             raise ValueError()
+    except MissingValue:
+        raise
     except (ValueError, KeyError, TypeError):
         raise ValueError("Text helper returned no valid field value; nothing typed.") from None
     return value, {

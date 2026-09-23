@@ -98,6 +98,8 @@ uv run --env-file .env python examples/run.py \
 - **One browser call per snapshot.** Read visible controls, their names, values, and text atomically. Keep references to the actual DOM nodes.
 - **Validate the selected target.** Clicks check the document, form values, target, and nearby context. Animation alone does not force another prediction. Resolve current geometry and reject covered controls before input.
 - **Wait for useful state.** After typing into a combobox, wait for visible suggestions, capped at 200 ms. Other interactions get at most two animation frames or 50 ms. These reads happen after execution is logged.
+- **Let fresh documents settle.** A page younger than 2.5 s is re-read until it holds still for 100 ms (capped at 500 ms) before a decision, so post-load script churn does not waste a model call on a stale page.
+- **Warm connections during page load.** The TLS/HTTP2 connections to TypeSafe and the text model open while the page loads.
 - **Keep hidden tabs rendering.** Focus emulation prevents background animation throttling without switching Chrome's visible tab.
 - **Send visible text.** Offscreen article bodies and footers do not fill the model context.
 - **Reuse an interrupted text request.** A generated value survives a stale-page retry only if the entire text-helper input is unchanged.

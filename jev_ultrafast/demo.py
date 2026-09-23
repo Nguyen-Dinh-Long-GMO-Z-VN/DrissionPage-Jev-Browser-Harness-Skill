@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from .agent import Agent
+from .model import DEFAULT_TEXT_MODEL
 from .questions import MAX_STEPS
 
 ROOT = Path(__file__).parent
@@ -26,12 +27,12 @@ def load_environment():
         for line in path.read_text().splitlines():
             if "=" in line and not line.startswith("#"):
                 key, value = line.split("=", 1)
-                os.environ.setdefault(key, value)
+                os.environ.setdefault(key, value.strip().strip('"').strip("'"))
 
 
 def response_state():
     state = AGENT.snapshot() if AGENT else {"page": None, "status": "idle", "history": [], "decision": None}
-    return {**state, "text_model": os.environ.get("TEXT_MODEL", "deepseek-chat"), "max_steps": MAX_STEPS}
+    return {**state, "text_model": os.environ.get("TEXT_MODEL", DEFAULT_TEXT_MODEL), "max_steps": MAX_STEPS}
 
 
 def close_browser():

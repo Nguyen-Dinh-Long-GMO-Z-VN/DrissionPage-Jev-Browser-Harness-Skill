@@ -164,7 +164,9 @@ def runner():
     a.pending_text = None
     p = page()
     a.state = {
-        "browser": Mock(fresh=Mock(return_value=True), observe=Mock(return_value=p)),
+        "browser": Mock(
+            fresh=Mock(return_value=True), observe=Mock(return_value=p), settle=Mock(side_effect=lambda page, **_: page)
+        ),
         "page": p,
         "decision": decision(),
         "goal": "Find a book",

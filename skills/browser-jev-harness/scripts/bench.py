@@ -1,6 +1,6 @@
 """Before/after benchmark for the browser-jev-harness skill.
 
-    uv run --env-file .env python .devin/skills/browser-jev-harness/bench.py
+    uv run --env-file .env python skills/browser-jev-harness/scripts/bench.py
 
 Same task both ways: open the Gödel article from Wikipedia's main page.
 
@@ -130,16 +130,7 @@ def jev_run():
     started = time.perf_counter()
     new_tab(URL)
     wait_loaded()
-    with Agent.__new__(Agent) as agent:  # reuse the harness tab, not a new one
-        agent.pending_text = None
-        agent.browser = _tab_browser()
-        agent.record_dir = None
-        agent.screenshots = False
-        agent.state = dict(
-            browser=agent.browser, goal=GOAL, page=agent.browser.observe(screenshot=False),
-            decision=None, history=[], status="ready", plan=[GOAL], plan_index=0,
-            decisions=[], text_calls=[], elapsed_ms=0, started_at=None, record=False,
-        )
+    with Agent.attach(_tab_browser(), GOAL) as agent:  # reuse the harness tab, not a new one
         try:
             for _ in agent.run():
                 pass

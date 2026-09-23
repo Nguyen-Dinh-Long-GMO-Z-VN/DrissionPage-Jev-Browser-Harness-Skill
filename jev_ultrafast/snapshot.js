@@ -102,6 +102,7 @@
   if (scrollY+innerHeight<height-2) actions.push({id:'scroll_down',kind:'scroll',label:'Scroll down',delta:560});
   if (scrollY>0) actions.push({id:'scroll_up',kind:'scroll',label:'Scroll up',delta:-560});
   actions.push({id:'wait',kind:'wait',label:'Wait for the page to update'});
-  return {url:location.href,title:document.title,w:innerWidth,h:innerHeight,text,
+  // Document age lets the executor wait out post-load script churn only where it happens.
+  return {url:location.href,title:document.title,w:innerWidth,h:innerHeight,text,age:Math.round(performance.now()),
     scroll:{y:scrollY,height},actions,marker,page_key,guards,omitted_actions};
 })()
