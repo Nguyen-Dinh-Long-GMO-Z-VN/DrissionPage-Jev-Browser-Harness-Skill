@@ -6,7 +6,7 @@
 
 [TypeSafe's Jev](https://docs.typesafe.ai/introduction) picks an operation and a target element from an indexed table of the page's visible controls. A small text LLM writes text only when the operation is `TYPE_TEXT`. This repo ships the loop as a Python library, a local inspector, and an agent skill (`browser-jev-harness`) that runs the loop on a [Browser Harness](https://github.com/browser-use/browser-harness) tab.
 
-[Measurements](docs/performance.md) · [Read the loop](jev_ultrafast/agent.py)
+[Measurements](docs/performance.md) · [Read the loop](scripts/jev_ultrafast/agent.py)
 
 ## Contents
 
@@ -37,13 +37,14 @@ Chrome connects through Browser Harness, installed by `uv sync`. Run `uv run bro
 
 ## Use it as a skill
 
-The skill lives in [skills/browser-jev-harness](skills/browser-jev-harness/SKILL.md). `.claude/skills/` and `.agents/skills/` symlink to it, so Claude Code and other agents in this repo pick it up automatically. Elsewhere, copy or symlink that folder into your agent's skills directory.
+This repository **is** the skill: [SKILL.md](SKILL.md) at the root, with everything it needs in `scripts/` (`jev_helpers.py`, the `jev_ultrafast/` package, `requirements.txt`). Copy or symlink the folder into your agent's skills directory, for example `~/.claude/skills/browser-jev-harness`. Nothing depends on a repo checkout or a project venv.
 
-Run from the repo root, with a harness tab attached:
+Run with a harness tab attached and `.env` in the working directory:
 
 ```bash
-uv run browser-harness <<'PY'
-exec(open("skills/browser-jev-harness/scripts/jev_helpers.py").read())
+uv run --with-requirements scripts/requirements.txt browser-harness <<'PY'
+import sys; sys.path.insert(0, "scripts")
+from jev_helpers import jev_run
 new_tab("https://en.wikipedia.org/wiki/Main_Page")
 print(jev_run("Open the article about Godel's incompleteness theorems."))
 PY
@@ -57,7 +58,7 @@ PY
 
 Write the goal as an outcome ("Find one-way flights from Zurich to London on 20 Sept, one adult, economy"), not as a script of clicks. If a field needs a value the goal does not contain, the run stops with `status: "blocked"` and names the field. Supply it and run again.
 
-A `DONE` result is a claim, not proof. Confirm the outcome with page state you read yourself, or with a real network response via `jev_ultrafast.listener.wait_for_response`. The skill's [SKILL.md](skills/browser-jev-harness/SKILL.md) covers verification, when to fall back to manual CDP, and gotchas.
+A `DONE` result is a claim, not proof. Confirm the outcome with page state you read yourself, or with a real network response via `jev_ultrafast.listener.wait_for_response`. [SKILL.md](SKILL.md) covers verification, when to fall back to manual CDP, and gotchas.
 
 ## Use it as a library
 
@@ -138,7 +139,7 @@ Target questions are speculative. If the operation is `CLICK`, only `click_targe
 
 In six alternating runs with identical models and settings, both versions passed **3/3**. Median task time went from **9.450 s → 7.092 s** (25% lower); median browser protocol calls went from **1,092 → 101**. That is three repeats of one task on one browser profile, not a general reliability benchmark.
 
-The same policy opened the requested Wikipedia article in **2.798 s** and passed a local hotel search/filter task in **1.896 s**. Runs, failures, source hashes, and measurement boundaries are in [docs/performance.md](docs/performance.md). The skill's own small comparison, which shows Jev is *slower* on tiny tasks and wins on model input size, is in [references/benchmark.md](skills/browser-jev-harness/references/benchmark.md).
+The same policy opened the requested Wikipedia article in **2.798 s** and passed a local hotel search/filter task in **1.896 s**. Runs, failures, source hashes, and measurement boundaries are in [docs/performance.md](docs/performance.md). The skill's own small comparison, which shows Jev is *slower* on tiny tasks and wins on model input size, is in [references/benchmark.md](references/benchmark.md).
 
 **Limits.** The DOM reader handles common HTML and ARIA controls, not the full accessible-name specification. Shadow roots, frames, canvas, uploads, drag and drop, pop-up tabs, nested scrolling, and arbitrary keyboard widgets are outside this MVP. Very heavy pages (Gmail renders about 130 controls) exceed the token budget. Owned tabs share the existing Chrome profile.
 
@@ -146,15 +147,15 @@ The same policy opened the requested Wikipedia article in **2.798 s** and passed
 
 | Path | Job |
 | --- | --- |
-| [jev_ultrafast/agent.py](jev_ultrafast/agent.py) | The complete loop and text-helper handoff |
-| [jev_ultrafast/snapshot.js](jev_ultrafast/snapshot.js) | Atomic DOM snapshot, indexed controls, freshness guards |
-| [jev_ultrafast/browser.py](jev_ultrafast/browser.py) | Browser connection, current geometry, execution |
-| [jev_ultrafast/model.py](jev_ultrafast/model.py) | Dynamic operation/target heads and text generation |
-| [jev_ultrafast/questions.py](jev_ultrafast/questions.py) | Model instructions |
-| [jev_ultrafast/demo.py](jev_ultrafast/demo.py) | Local inspector |
-| [skills/browser-jev-harness](skills/browser-jev-harness/SKILL.md) | The agent skill: helpers, benchmark script, evals, references |
+| [scripts/jev_ultrafast/agent.py](scripts/jev_ultrafast/agent.py) | The complete loop and text-helper handoff |
+| [scripts/jev_ultrafast/snapshot.js](scripts/jev_ultrafast/snapshot.js) | Atomic DOM snapshot, indexed controls, freshness guards |
+| [scripts/jev_ultrafast/browser.py](scripts/jev_ultrafast/browser.py) | Browser connection, current geometry, execution |
+| [scripts/jev_ultrafast/model.py](scripts/jev_ultrafast/model.py) | Dynamic operation/target heads and text generation |
+| [scripts/jev_ultrafast/questions.py](scripts/jev_ultrafast/questions.py) | Model instructions |
+| [scripts/jev_ultrafast/demo.py](scripts/jev_ultrafast/demo.py) | Local inspector |
+| [SKILL.md](SKILL.md) · [scripts/jev_helpers.py](scripts/jev_helpers.py) | The agent skill and its entry points; `scripts/bench.py` is the benchmark, with [evals/](evals) and [references/](references) |
 | [examples/](examples) | Runnable tasks (`run.py`, `flights.py`) |
-| [scripts/](scripts) | Guard checks and measurement |
+| [tools/](tools) | Guard checks and measurement |
 | [docs/](docs) | Design notes and measurements |
 
 ## Development
@@ -162,12 +163,12 @@ The same policy opened the requested Wikipedia article in **2.798 s** and passed
 ```bash
 uv run ruff check .
 uv run pytest
-node --check jev_ultrafast/static/app.js
-node --check jev_ultrafast/snapshot.js
+node --check scripts/jev_ultrafast/static/app.js
+node --check scripts/jev_ultrafast/snapshot.js
 uv build
 ```
 
-CI runs the same checks on every push to `main` and on pull requests. Tests are offline and never call paid APIs. `uv run python scripts/check_guards.py` checks real controls in a local browser without model calls. Live examples, `skills/browser-jev-harness/scripts/bench.py`, and the measurement and recording scripts make paid API calls. Raw traces stay ignored.
+CI runs the same checks on every push to `main` and on pull requests. Tests are offline and never call paid APIs. `uv run python tools/check_guards.py` checks real controls in a local browser without model calls. Live examples, `scripts/bench.py`, and the measurement and recording scripts make paid API calls. Raw traces stay ignored.
 
 ---
 

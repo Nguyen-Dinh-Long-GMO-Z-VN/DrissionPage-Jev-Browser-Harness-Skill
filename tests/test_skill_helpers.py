@@ -4,16 +4,15 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
-
 from jev_ultrafast.browser import StalePage
 
-HELPERS = Path(__file__).parents[1] / "skills" / "browser-jev-harness" / "scripts" / "jev_helpers.py"
+HELPERS = Path(__file__).parents[1] / "scripts" / "jev_helpers.py"
 
 
 @pytest.fixture
 def helpers(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)  # the helpers load .env from cwd upward; keep real keys out of tests
-    namespace = {"__name__": "jev_helpers"}
+    namespace = {"__name__": "jev_helpers", "__file__": str(HELPERS)}
     exec(compile(HELPERS.read_text(), str(HELPERS), "exec"), namespace)
     page = {"url": "u", "title": "t", "actions": [
         {"id": "e1", "kind": "click", "label": "Go", "role": "button", "value": "", "node": 1},

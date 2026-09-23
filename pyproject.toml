@@ -21,6 +21,9 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = ["pytest>=8.4,<9", "ruff>=0.14,<1", "pillow>=11,<13"]
 
+[tool.hatch.build.targets.wheel]
+packages = ["scripts/jev_ultrafast"]
+
 [tool.ruff]
 line-length = 120
 
@@ -29,3 +32,4 @@ select = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = [".", "scripts"]

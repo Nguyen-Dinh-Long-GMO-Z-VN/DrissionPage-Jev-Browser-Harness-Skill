@@ -1,6 +1,6 @@
 """Before/after benchmark for the browser-jev-harness skill.
 
-    uv run --env-file .env python skills/browser-jev-harness/scripts/bench.py
+    uv run --env-file .env python scripts/bench.py
 
 Same task both ways: open the Gödel article from Wikipedia's main page.
 
@@ -19,7 +19,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from browser_harness.helpers import cdp, click_at_xy, new_tab, page_info, type_text  # noqa: E402
 from jev_helpers import _detach, _result, _tab_browser  # noqa: E402
-
 from jev_ultrafast.agent import Agent  # noqa: E402
 
 URL = "https://en.wikipedia.org/wiki/Main_Page"

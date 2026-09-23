@@ -1,10 +1,12 @@
 """Jev fast-path helpers for a browser-harness session.
 
-Load inside a `browser-harness` heredoc (run from the jev-ultrafast repo so the
-venv provides `jev_ultrafast` and `.env` is found):
+The skill is self-contained: this file, the `jev_ultrafast` package next to it, and
+`requirements.txt` are everything it needs. Load it inside a `browser-harness` heredoc:
 
-    uv run browser-harness <<'PY'
-    exec(open("<skill base dir>/scripts/jev_helpers.py").read())
+    uv run --with-requirements <skill base dir>/scripts/requirements.txt browser-harness <<'PY'
+    import sys; sys.path.insert(0, "<skill base dir>/scripts")
+    from jev_helpers import jev_run
+    new_tab("https://en.wikipedia.org/wiki/Main_Page")
     print(jev_run("Open the article about Godel's incompleteness theorems."))
     PY
 
@@ -15,10 +17,17 @@ Three levels of use:
 """
 
 import os
+import sys
 from pathlib import Path
 
-# Credentials stay in .env (gitignored); existing environment wins.
-for _p in (Path.cwd(), *Path.cwd().parents):
+# Self-contained: make the bundled jev_ultrafast package importable without installing it.
+HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+
+# Credentials stay in .env (gitignored); existing environment wins. Look in the working
+# directory and its parents first, then in the skill's own folder.
+for _p in (Path.cwd(), *Path.cwd().parents, HERE.parent):
     _env = _p / ".env"
     if _env.exists():
         for _line in _env.read_text().splitlines():
@@ -28,7 +37,6 @@ for _p in (Path.cwd(), *Path.cwd().parents):
         break
 
 from browser_harness.helpers import cdp, current_tab  # noqa: E402
-
 from jev_ultrafast.agent import Agent  # noqa: E402
 from jev_ultrafast.browser import Browser  # noqa: E402
 from jev_ultrafast.model import MissingValue, choose, field_context, field_text  # noqa: E402

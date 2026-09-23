@@ -18,7 +18,7 @@ folder = Path(sys.argv[1] if len(sys.argv) > 1 else "artifacts/flights/recorded"
 folder.mkdir(parents=True, exist_ok=False)
 source_hashes = {
     p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-    for p in (Path(__file__).resolve().parents[1] / "jev_ultrafast").iterdir()
+    for p in (Path(__file__).resolve().parents[1] / "scripts" / "jev_ultrafast").iterdir()
     if p.suffix in {".py", ".js"}
 }
 agent = Agent(URL, GOALS)

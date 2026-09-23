@@ -13,9 +13,14 @@ win is autonomy and less model input per step, not raw wall time on tiny tasks (
 
 ## Requirements
 
-- Work from the jev-ultrafast repo root and run everything with `uv run`. Its venv has `jev_ultrafast` installed
-  editable, and `.env` at the root holds `TYPESAFE_API_KEY` and `TEXT_MODEL_*`. `scripts/jev_helpers.py` loads
-  `.env` itself; variables already exported win.
+The skill folder is self-contained: `scripts/jev_helpers.py`, the `scripts/jev_ultrafast/` package, and
+`scripts/requirements.txt`. Nothing depends on a repo checkout or a project venv.
+
+- Run with `uv run --with-requirements <skill base dir>/scripts/requirements.txt browser-harness`, which installs
+  `browser-harness` and `httpx` on demand.
+- Put `TYPESAFE_API_KEY` and `TEXT_MODEL_*` in a `.env` in the working directory (or its parents, or the skill
+  folder), or export them. `scripts/jev_helpers.py` loads `.env` itself; variables already exported win. The
+  names are in `.env.example`.
 - Attach a harness tab first (`new_tab()` / `switch_tab()`). Jev drives that tab and never touches Chrome's
   visible tab.
 
@@ -25,8 +30,9 @@ win is autonomy and less model input per step, not raw wall time on tiny tasks (
 the command works wherever the skill is installed.
 
 ```bash
-uv run browser-harness <<'PY'
-exec(open("<skill base dir>/scripts/jev_helpers.py").read())
+uv run --with-requirements <skill base dir>/scripts/requirements.txt browser-harness <<'PY'
+import sys; sys.path.insert(0, "<skill base dir>/scripts")
+from jev_helpers import jev_run
 new_tab("https://en.wikipedia.org/wiki/Main_Page")
 print(jev_run("Open the article about Godel's incompleteness theorems."))
 PY
@@ -78,9 +84,8 @@ is still found. Use it to confirm, for example, that an order POST returned 200,
 
 - Background tabs throttle focus-gated widgets. Jev enables `Emulation.setFocusEmulationEnabled` on its own
   session; do the same when driving manually (Wikipedia suggestions never fire without it).
-- `browser-harness` here means this repo's venv copy (`uv run browser-harness`). It shares the daemon with Jev,
-  so the same `BU_NAME` rules apply.
+- `browser-harness` shares its daemon with Jev, so the same `BU_NAME` rules apply.
 - Jev attaches its own CDP session to the harness tab and detaches when the call returns. Do not reuse a
   `Browser` from an earlier call.
-- To reproduce the benchmark: `uv run --env-file .env python <skill base dir>/scripts/bench.py`. It makes paid
+- To reproduce the benchmark: `uv run --with-requirements <skill base dir>/scripts/requirements.txt --env-file .env python <skill base dir>/scripts/bench.py`. It makes paid
   API calls.

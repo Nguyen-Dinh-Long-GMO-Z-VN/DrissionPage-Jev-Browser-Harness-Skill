@@ -14,7 +14,7 @@ parser.add_argument("--source", default=".")
 parser.add_argument("--output", required=True)
 args = parser.parse_args()
 source = Path(args.source).resolve()
-sys.path.insert(0, str(source))
+sys.path.insert(0, str(source / "scripts" if (source / "scripts" / "jev_ultrafast").exists() else source))
 from jev_ultrafast import Agent  # noqa: E402
 from jev_ultrafast import browser as browser_module  # noqa: E402
 
