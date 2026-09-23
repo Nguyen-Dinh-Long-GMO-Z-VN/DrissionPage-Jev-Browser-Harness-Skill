@@ -18,8 +18,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from browser_harness.helpers import cdp, click_at_xy, new_tab, page_info, type_text  # noqa: E402
-from jev_helpers import _detach, _result, _tab_browser  # noqa: E402
-from jev_ultrafast.agent import Agent  # noqa: E402
+from jev_helpers import _detach, _tab_browser  # noqa: E402
+from jev_ultrafast.agent import Agent, summarize  # noqa: E402
 
 URL = "https://en.wikipedia.org/wiki/Main_Page"
 GOAL = "Find and open the Wikipedia article about Godel's incompleteness theorems."
@@ -135,7 +135,7 @@ def jev_run():
                 pass
         finally:
             _detach(agent.browser)
-    result = _result(agent)
+    result = summarize(agent)
     result["ok"] = "incompleteness" in result["title"].lower()
     result["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
     result["request_bytes"] = sum(len(json.dumps(d.get("request", {}))) for d in agent.state["decisions"])

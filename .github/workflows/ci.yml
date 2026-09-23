@@ -20,3 +20,10 @@ jobs:
       - run: node --check scripts/jev_ultrafast/static/app.js
       - run: node --check scripts/jev_ultrafast/snapshot.js
       - run: uv build
+      - name: Skill folder imports on its own
+        run: |
+          d=$(mktemp -d)
+          cp -r SKILL.md scripts references evals "$d"
+          cd "$d"
+          uv run --no-project --with-requirements scripts/requirements.txt python -c \
+            "import sys; sys.path.insert(0, 'scripts'); import jev_helpers, jev_ultrafast.skill")

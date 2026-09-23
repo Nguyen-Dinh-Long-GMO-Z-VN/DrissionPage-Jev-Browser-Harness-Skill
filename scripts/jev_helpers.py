@@ -16,7 +16,6 @@ Three levels of use:
 - jev_act()              execute the decision returned by jev_choose
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -25,23 +24,12 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-# Credentials stay in .env (gitignored); existing environment wins. Look in the working
-# directory and its parents first, then in the skill's own folder.
-for _p in (Path.cwd(), *Path.cwd().parents, HERE.parent):
-    _env = _p / ".env"
-    if _env.exists():
-        for _line in _env.read_text().splitlines():
-            if "=" in _line and not _line.startswith("#"):
-                _k, _v = _line.split("=", 1)
-                os.environ.setdefault(_k, _v.strip().strip('"').strip("'"))
-        break
-
 from browser_harness.helpers import cdp, current_tab  # noqa: E402
-from jev_ultrafast.agent import Agent, summarize  # noqa: E402
 from jev_ultrafast.browser import Browser  # noqa: E402
-from jev_ultrafast.model import MissingValue, choose, field_context, field_text  # noqa: E402
+from jev_ultrafast.env import load_env  # noqa: E402
+from jev_ultrafast.skill import Skill  # noqa: E402
 
-_LAST = {}
+load_env(HERE.parent)  # Jev's own variables only; anything already exported wins
 
 
 def _tab_browser():
@@ -50,81 +38,40 @@ def _tab_browser():
     return Browser.from_session(session)
 
 
+def _open(url=None):
+    return Browser(url) if url is not None else _tab_browser()
+
+
 def _detach(browser):
     if browser and browser.session:
         cdp("Target.detachFromTarget", sessionId=browser.session)
         browser.session = None
 
 
-_result = summarize
+def _release(browser):
+    # A tab we created is closed; the harness's own tab is only detached from, never closed.
+    browser.close() if browser.target else _detach(browser)
+
+
+_skill = Skill(_open, _release)
 
 
 def jev_run(goal, url=None, max_steps=20):
-    """Run the full Jev loop. With url=, uses a dedicated background tab;
-    without, drives the harness's current tab. Returns a result dict.
-    max_steps caps executed actions (model calls are capped at twice that), so a
-    stuck run cannot burn a small API quota."""
-    if url is not None:
-        with Agent(url, goal, max_steps=max_steps) as agent:
-            for _ in agent.run():
-                pass
-            return _result(agent)
-    browser = _tab_browser()
-    try:
-        agent = Agent.attach(browser, goal, max_steps=max_steps)
-        for _ in agent.run():
-            pass
-        return _result(agent)
-    finally:
-        _detach(browser)
+    """Run the full Jev loop and return a result dict. With url=, uses a dedicated background tab;
+    without, drives the harness's current tab. max_steps caps executed actions (model calls are
+    capped at twice that), so a stuck run cannot burn a small API quota."""
+    return _skill.run(goal, url, max_steps)
 
 
 def jev_choose(goal):
     """Observe the current tab and return Jev's choice without executing it.
     Pair with jev_act() to execute, or ignore and drive the tab manually.
     The CDP session is released before returning; jev_act() attaches its own."""
-    browser = _tab_browser()
-    try:
-        page = browser.settle(browser.observe(screenshot=False))
-        decision = choose(page, goal, [])
-    finally:
-        _detach(browser)
-    _LAST.clear()
-    _LAST.update(page=page, decision=decision, goal=goal)
-    return {
-        "url": page["url"],
-        "title": page["title"],
-        "elements": len(page["actions"]),
-        "operation": decision["operation"],
-        "choice": decision["choice"],
-        "target": decision["target"],
-        "confidence": decision["confidence"],
-        "operation_probabilities": decision["operation_probabilities"],
-        "latency_ms": decision["latency_ms"],
-    }
+    return _skill.choose(goal)
 
 
 def jev_act():
     """Execute the pending jev_choose decision on the current tab, at most once.
-    The decision is consumed before any input, so calling jev_act() again cannot
-    repeat a click. TYPE_TEXT still goes through the small text model; nothing is
-    typed without it. Raises StalePage if the page changed since jev_choose."""
-    if "decision" not in _LAST:
-        raise ValueError("No pending decision. Call jev_choose(goal) first.")
-    page, decision, goal = _LAST.pop("page"), _LAST.pop("decision"), _LAST.pop("goal")
-    choice = decision["choice"]
-    if choice in {"DONE", "BLOCKED"}:
-        return {"executed": choice}
-    action = next(a for a in page["actions"] if a["id"] == choice)
-    text = None
-    if action["kind"] == "fill":
-        try:
-            text, _ = field_text(field_context(goal, action, page, []))
-        except MissingValue as missing:
-            return {"executed": None, "blocked": str(missing)}
-    browser = _tab_browser()
-    try:
-        browser.act(action, page, text=text)
-    finally:
-        _detach(browser)
-    return {"executed": action["id"], "label": action["label"], "text": text}
+    The decision is consumed before any input, so calling jev_act() again cannot repeat a click.
+    Raises StalePage if the page changed since jev_choose."""
+    return _skill.act()

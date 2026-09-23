@@ -3,9 +3,8 @@
 from unittest.mock import Mock
 
 import pytest
-from jev_ultrafast.drission import DrissionBrowser, wait_for_response
-
 from jev_ultrafast import browser
+from jev_ultrafast.drission import DrissionBrowser, wait_for_response
 
 
 class ContextLostError(Exception):
@@ -22,9 +21,13 @@ def test_from_tab_enables_focus_and_leaves_the_tab_open():
     tab = make_tab()
     b = DrissionBrowser.from_tab(tab)
     assert (b.target, b.after_input) == (None, None)
-    assert [c.args[0] for c in tab.run_cdp.call_args_list] == ["Emulation.setFocusEmulationEnabled"]
+    assert tab.run_cdp.call_args.kwargs == {"enabled": True}
+    b.close()
     b.close()
     tab.close.assert_not_called()
+    # a borrowed tab gets focus emulation switched back off, once
+    disables = [c for c in tab.run_cdp.call_args_list if c.kwargs == {"enabled": False}]
+    assert len(disables) == 1
 
 
 def test_owned_tab_is_closed_once():
@@ -84,3 +87,44 @@ def test_wait_for_response_returns_none_on_timeout_and_starts_listening_when_idl
     tab.listen.wait.return_value = False
     assert wait_for_response(tab, "checkout", timeout=1) is None
     tab.listen.start.assert_called_once_with("checkout")
+
+
+def fake_drissionpage(monkeypatch):
+    import sys
+    import types
+
+    options = Mock()
+    options.set_address.return_value = options
+    options.headless.return_value = options
+    options.existing_only.return_value = options
+    module = types.SimpleNamespace(Chromium=Mock(return_value="chromium"), ChromiumOptions=Mock(return_value=options))
+    monkeypatch.setitem(sys.modules, "DrissionPage", module)
+    return module, options
+
+
+def test_connect_launches_on_the_port_when_nothing_listens(monkeypatch):
+    from jev_ultrafast import drission
+
+    module, _ = fake_drissionpage(monkeypatch)
+    monkeypatch.setattr(drission, "running_user_agent", lambda address: None)
+    assert drission.connect(9555) == "chromium"
+    module.Chromium.assert_called_once_with("127.0.0.1:9555")
+
+
+@pytest.mark.parametrize(("agent", "headless"), [("Mozilla Chrome/153", False), ("Mozilla HeadlessChrome/153", True)])
+def test_connect_attaches_to_a_running_chrome_matching_its_headless_mode(monkeypatch, agent, headless):
+    from jev_ultrafast import drission
+
+    module, options = fake_drissionpage(monkeypatch)
+    monkeypatch.setattr(drission, "running_user_agent", lambda address: agent)
+    drission.connect(address="127.0.0.1:9222")
+    options.set_address.assert_called_once_with("127.0.0.1:9222")
+    options.headless.assert_called_once_with(headless)
+    options.existing_only.assert_called_once_with()
+    module.Chromium.assert_called_once_with(options)
+
+
+def test_running_user_agent_is_none_when_nothing_answers():
+    from jev_ultrafast.drission import running_user_agent
+
+    assert running_user_agent("127.0.0.1:1", timeout=0.2) is None

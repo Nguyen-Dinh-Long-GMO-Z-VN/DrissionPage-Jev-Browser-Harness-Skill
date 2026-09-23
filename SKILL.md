@@ -19,8 +19,8 @@ The skill folder is self-contained: `scripts/jev_helpers.py`, the `scripts/jev_u
 - Run with `uv run --with-requirements <skill base dir>/scripts/requirements.txt browser-harness`, which installs
   `browser-harness` and `httpx` on demand.
 - Put `TYPESAFE_API_KEY` and `TEXT_MODEL_*` in a `.env` in the working directory (or its parents, or the skill
-  folder), or export them. `scripts/jev_helpers.py` loads `.env` itself; variables already exported win. The
-  names are in `.env.example`.
+  folder), or export them. The helpers load `.env` themselves and read only `TYPESAFE_*` and `TEXT_MODEL*`;
+  variables already exported win. The names are in `.env.example`.
 - Attach a harness tab first (`new_tab()` / `switch_tab()`). Jev drives that tab and never touches Chrome's
   visible tab.
 
@@ -73,7 +73,7 @@ PY
 
 - DrissionPage connects to Chrome on a debugging port (`port=9222` by default) and starts Chrome there if nothing
   is listening. With `url=` the run owns a background tab and closes it; without it, the most recently active tab
-  is driven and left open. The first connection right after Chrome launches can fail once; retry.
+  is driven and left open. A Chrome that is already listening is attached to as it is, headless or not.
 - Outcome checks use DrissionPage's own listener. Call `tab.listen.start("<url fragment>")` **before** the action,
   then `jev_ultrafast.drission.wait_for_response(tab)`. It is not retroactive, unlike the harness listener below.
 - **License:** DrissionPage allows personal, learning, and non-profit use; commercial use needs its author's
@@ -86,6 +86,7 @@ A `DONE` choice is a claim, not proof. Confirm with a real network packet (`jev_
 page state you read yourself:
 
 ```python
+from jev_helpers import _tab_browser
 from jev_ultrafast.listener import wait_for_response, url_contains
 b = _tab_browser()                      # attaches; Network.enable is already on
 # ... jev_run / jev_act / manual clicks ...

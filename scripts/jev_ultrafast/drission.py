@@ -8,7 +8,9 @@ DrissionPage is a separate package with its own license (personal, learning, and
 use needs the author's authorization). It is an optional dependency and is imported only here.
 """
 
+import json
 import time
+import urllib.request
 
 from .browser import Browser, StalePage, browser_operation
 
@@ -16,11 +18,30 @@ from .browser import Browser, StalePage, browser_operation
 STALE_ERRORS = {"ContextLostError", "PageDisconnectedError"}
 
 
-def connect(port=9222, address=None):
-    """A DrissionPage `Chromium` on `port` (or `address` such as '127.0.0.1:9222')."""
-    from DrissionPage import Chromium
+def running_user_agent(address, timeout=1):
+    """The user agent of a Chrome already listening on `address`, or None."""
+    try:
+        with urllib.request.urlopen(f"http://{address}/json/version", timeout=timeout) as response:
+            return json.load(response).get("User-Agent", "")
+    except (OSError, ValueError):
+        return None
 
-    return Chromium(address or f"127.0.0.1:{port}")
+
+def connect(port=9222, address=None):
+    """A DrissionPage `Chromium` on `port` (or `address` such as '127.0.0.1:9222').
+
+    A Chrome that is already listening is attached to as it is. DrissionPage restarts a browser whose
+    headless mode differs from its own options, and cannot tell a `--headless=new` Chrome from a headed one
+    by its user agent, so the options are set to match what the running browser reports. If nothing is
+    listening, DrissionPage launches Chrome on that port.
+    """
+    from DrissionPage import Chromium, ChromiumOptions
+
+    address = address or f"127.0.0.1:{port}"
+    agent = running_user_agent(address)
+    if agent is None:
+        return Chromium(address)
+    return Chromium(ChromiumOptions().set_address(address).headless("headless" in agent.lower()).existing_only())
 
 
 class DrissionBrowser(Browser):
@@ -39,6 +60,8 @@ class DrissionBrowser(Browser):
             self.call("Emulation.setDeviceMetricsOverride", width=1120, height=780, deviceScaleFactor=1, mobile=False)
         # Keep rAF/menus rendering in a background tab without activating the user's Chrome tab.
         self.call("Emulation.setFocusEmulationEnabled", enabled=True)
+        self.owned = owned
+        self._released = False
 
     @classmethod
     def open(cls, browser, url):
@@ -76,9 +99,17 @@ class DrissionBrowser(Browser):
             time.sleep(0.02)
 
     def close(self):
+        """Close a tab this object opened. A borrowed tab stays open, with focus emulation switched back off
+        (DrissionPage shares one CDP session, so it would otherwise outlive this object)."""
         if self.target:
             self.tab.close()
             self.target = None
+        elif not self.owned and not self._released:
+            self._released = True
+            try:
+                self.call("Emulation.setFocusEmulationEnabled", enabled=False)
+            except Exception:
+                pass  # the tab may already be gone
 
 
 def wait_for_response(tab, targets=True, timeout=15):

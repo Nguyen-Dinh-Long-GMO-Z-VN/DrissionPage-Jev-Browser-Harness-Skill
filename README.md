@@ -2,6 +2,8 @@
 
 # Jev Ultrafast ⚡ browser-harness skill
 
+> Based on [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) (MIT, © Browser Use). This repository reorganizes it as a self-contained agent skill and adds an optional DrissionPage backend. The original license is kept in [LICENSE](LICENSE).
+
 **Give a browser agent one goal. It reads a compact element table and acts in one model call per step.**
 
 [TypeSafe's Jev](https://docs.typesafe.ai/introduction) picks an operation and a target element from an indexed table of the page's visible controls. A small text LLM writes text only when the operation is `TYPE_TEXT`. This repo ships the loop as a Python library, a local inspector, and an agent skill (`browser-jev-harness`) that runs the loop on a [Browser Harness](https://github.com/browser-use/browser-harness) tab or, optionally, on a [DrissionPage](https://github.com/g1879/DrissionPage) tab.
@@ -37,7 +39,14 @@ Chrome connects through Browser Harness, installed by `uv sync`. Run `uv run bro
 
 ## Use it as a skill
 
-This repository **is** the skill: [SKILL.md](SKILL.md) at the root, with everything it needs in `scripts/` (`jev_helpers.py`, the `jev_ultrafast/` package, `requirements.txt`). Copy or symlink the folder into your agent's skills directory, for example `~/.claude/skills/browser-jev-harness`. Nothing depends on a repo checkout or a project venv.
+This repository **is** the skill: [SKILL.md](SKILL.md) at the root, with everything it needs in `scripts/` (`jev_helpers.py`, the `jev_ultrafast/` package, `requirements.txt`). To install it, copy just the skill files into your agent's skills directory (the rest of the repo is development material):
+
+```bash
+dest=~/.claude/skills/browser-jev-harness
+mkdir -p "$dest" && cp -r SKILL.md scripts references evals "$dest"/
+```
+
+Nothing depends on a repo checkout or a project venv. Jev reads only its own variables (`TYPESAFE_*`, `TEXT_MODEL*`) from a `.env` in the working directory, a parent, or the skill folder.
 
 Run with a harness tab attached and `.env` in the working directory:
 
