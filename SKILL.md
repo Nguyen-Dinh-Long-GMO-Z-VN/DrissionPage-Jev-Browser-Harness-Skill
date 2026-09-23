@@ -11,6 +11,11 @@ Each step is one TypeSafe request that returns both the operation (`CLICK`, `TYP
 win is autonomy and less model input per step, not raw wall time on tiny tasks (see
 [references/benchmark.md](references/benchmark.md)).
 
+## When not to use
+
+If a plain HTTP request can read the answer (a public page, an API, docs), use `curl` or a fetch tool and leave the
+browser alone. Use Jev when the task needs clicks, typing, navigation, a logged-in session, or JS rendering.
+
 ## Requirements
 
 The skill folder is self-contained: `scripts/jev_helpers.py`, the `scripts/jev_ultrafast/` package, and
@@ -42,13 +47,16 @@ Three levels, from coarse to fine:
 
 - `jev_run(goal, max_steps=20)` runs the full loop on the current tab until `done` or `blocked`. Pass `url=` to use
   a dedicated background tab instead. Returns `{status, reason, url, title, steps, model_calls, elapsed_ms,
-  history}`. `max_steps` caps executed actions and model calls (twice that), so a stuck run cannot drain a small
+  history, unverified_text}`. `max_steps` caps executed actions and model calls (twice that), so a stuck run cannot drain a small
   quota such as Gemini's free tier (20 requests per model per day).
 - `jev_choose(goal)` does one observation and one TypeSafe decision and executes nothing. Read `operation`,
   `choice` and `confidence` before deciding what to do.
 - `jev_act()` executes the pending `jev_choose` decision once. The decision is consumed before any input, so a
   second call raises instead of clicking again; call `jev_choose` again for a new decision. `TYPE_TEXT` still
-  calls the small text model, so nothing is typed from a guess.
+  calls the small text model, so nothing is typed from a guess. It returns `typed: "verified"` when the field's
+  content matched the text after typing, or `"unverified"` when it did not (see "Long text and rich editors").
+  If the browser errors after input may have reached the page, it raises "outcome unknown"; inspect the page
+  before choosing again, because the decision is already consumed.
 
 When the goal lacks a value a field needs (a phone number, a date), the run stops with `status: "blocked"` and
 `reason` naming the field. Ask the user for the value and run again rather than inventing one.
@@ -56,6 +64,34 @@ When the goal lacks a value a field needs (a phone number, a date), the run stop
 Write the goal as an outcome, not a script: "Find one-way flights from Zurich to London on 20 Sept, one adult,
 economy", not "click the From box, type Zurich". Jev picks the steps; scripted steps defeat the point and break
 when the page changes.
+
+## Login walls and sensitive steps
+
+- A login wall: stop and ask the user. Only continue on its own where Chrome is already signed in.
+- Stop for passwords, MFA, consent screens, and ambiguous account choices. Jev never reads or types password
+  fields; do not work around that with raw CDP.
+- Posting, paying, or deleting is the user's call: confirm the exact content and audience first, and check the
+  result afterwards.
+
+## Long text and rich editors
+
+`TYPE_TEXT` reports `typed`. `"unverified"` (also listed in `jev_run`'s `unverified_text`) means the field did not
+contain the text afterwards, which happens with rich editors such as Facebook's composer. It is a read, not a
+retry, so it is safe to check. Never assume the text landed on `executed` alone.
+
+1. Read the field yourself (`js(...)`) to see what it actually holds.
+2. Focus it and insert the text with `cdp("Input.insertText", text=...)`, then read it back again.
+3. Click the submit control with a full `mousePressed` then `mouseReleased`; a press alone does nothing.
+
+## Domain skills
+
+Optional, from browser-harness and off by default. Set `BH_DOMAIN_SKILLS=1`. Notes live in
+`$BH_AGENT_WORKSPACE/domain-skills/<site>/*.md`, and `goto_url(url)` returns up to 10 filenames for that host.
+`new_tab` and `jev_run` do not, so list the folder yourself.
+
+- Before a site-specific task, read every file in the site's folder, then pass what matters into the goal.
+- After you finish something by hand because Jev could not (a rich editor, a widget), write the working steps to
+  that folder for next time. Keep them out of Jev's policy; it stays free of site-specific plans.
 
 ## Alternative backend: DrissionPage
 
@@ -103,6 +139,11 @@ is still found. Use it to confirm, for example, that an order POST returned 200,
 - It raises `max_tokens_exceeded`. Heavy pages do not fit (Gmail renders ~130 controls).
 - The task needs something outside Jev's operations: file upload, drag, multi-step keyboard widgets, frames,
   canvas, shadow DOM, pop-up tabs.
+
+For those mechanics, read the matching file in browser-harness's
+[interaction-skills](https://github.com/browser-use/browser-harness/tree/main/interaction-skills): `uploads.md`,
+`drag-and-drop.md`, `iframes.md`, `cross-origin-iframes.md`, `shadow-dom.md`, `dropdowns.md`, `dialogs.md`,
+`tabs.md`, `scrolling.md`.
 
 ## Gotchas
 

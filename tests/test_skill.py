@@ -94,3 +94,24 @@ def test_run_releases_when_the_loop_fails(skill, monkeypatch):
     with pytest.raises(StalePage):
         skill.run("goal")
     skill.release.assert_called_once_with(skill.browser)
+
+
+def test_browser_error_after_possible_input_reports_unknown_outcome_once(skill):
+    skill.choose("Press Go")
+    skill.browser.act.side_effect = TimeoutError("CDP")
+    with pytest.raises(RuntimeError, match="outcome unknown"):
+        skill.act()
+    skill.release.assert_called()
+    with pytest.raises(ValueError, match="jev_choose"):
+        skill.act()
+    assert skill.browser.act.call_count == 1
+
+
+def test_act_reports_whether_typed_text_was_read_back(skill, monkeypatch):
+    fill = {"id": "e2", "kind": "fill", "label": "Post", "role": "textbox", "value": "", "node": 2}
+    skill.browser.observe.return_value = {**PAGE, "text": "", "actions": [fill]}
+    monkeypatch.setattr(skill_module, "choose", Mock(return_value={**DECISION, "choice": "e2"}))
+    monkeypatch.setattr(skill_module, "field_text", Mock(return_value=("hello", {})))
+    skill.browser.act.return_value = {"executed": "e2", "typed": "unverified"}
+    skill.choose("Write a post")
+    assert skill.act()["typed"] == "unverified"

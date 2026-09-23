@@ -334,3 +334,39 @@ def test_browser_error_after_possible_mutation_is_logged_and_blocks_next_choice(
     with pytest.raises(ValueError, match="run has stopped"):
         runner.command("predict")
     runner.state["browser"].act.assert_called_once()
+
+
+def _fill_request(actual):
+    """A fill through browser_operation whose read-back returns `actual` (or fails when it is an Exception)."""
+    def call(method, **params):
+        if method == "Runtime.evaluate" and "action.node" in params["expression"]:
+            return {"result": {"value": {"x": 1, "y": 1}}}
+        if method == "Runtime.evaluate":
+            if isinstance(actual, Exception):
+                raise actual
+            return {"result": {"value": actual}}
+        return {}
+
+    return {"operation": "act", "session": "s", "call": call, "text": "Jev  is\nfast",
+            "action": {"id": "e2", "kind": "fill", "node": 2}}
+
+
+@pytest.mark.parametrize(
+    ("actual", "expected"),
+    [("Jev is fast", "verified"), ("", "unverified"), (None, "unverified"), (RuntimeError("gone"), "unverified")],
+)
+def test_fill_reports_whether_the_text_was_read_back(monkeypatch, actual, expected):
+    import jev_ultrafast.browser as browser
+
+    monkeypatch.setattr(browser.time, "sleep", Mock())
+    assert browser_operation(_fill_request(actual)) == {"executed": "e2", "typed": expected}
+
+
+def test_unverified_text_is_recorded_and_summarized(runner, monkeypatch):
+    monkeypatch.setattr(loop, "field_text", Mock(return_value=("book", {"model": "test", "latency_ms": 10})))
+    runner.state["decision"] = decision("e1")
+    runner.state["browser"].act.return_value = {"executed": "e1", "typed": "unverified"}
+    runner.state["reason"] = None
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["history"][-1]["typed"] == "unverified"
+    assert loop.summarize(runner)["unverified_text"] == ["Search"]

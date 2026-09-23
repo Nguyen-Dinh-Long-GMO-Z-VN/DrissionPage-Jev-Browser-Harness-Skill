@@ -119,12 +119,25 @@ def main():
                          "},60))")
         page = browser.observe(screenshot=False)
         field = next(a for a in page["actions"] if a["kind"] == "fill")
-        browser.act(field, page, text="Generated")
+        assert browser.act(field, page, text="Generated")["typed"] == "verified"
         page = browser.observe(screenshot=False)
         value = browser.evaluate("document.querySelector('#query').value")
         assert value == "Generated", repr(value)
         assert any(a.get("role") == "option" for a in page["actions"])
         passed.append("real text input waits for asynchronous combobox suggestions")
+
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <div id="post" contenteditable="true" role="textbox" aria-label="Post" style="height:60px"></div>
+          <input id="dead" aria-label="Dead" value="">"""))
+        browser.evaluate("document.querySelector('#dead').addEventListener('input',e=>{e.target.value=''})")
+        page = browser.observe(screenshot=False)
+        post = next(a for a in page["actions"] if a["label"] == "Post" and a["kind"] == "fill")
+        assert browser.act(post, page, text="Long text for a rich editor")["typed"] == "verified"
+        assert browser.evaluate("document.querySelector('#post').innerText") == "Long text for a rich editor"
+        page = browser.observe(screenshot=False)
+        dead = next(a for a in page["actions"] if a["label"] == "Dead" and a["kind"] == "fill")
+        assert browser.act(dead, page, text="Vanishes")["typed"] == "unverified"
+        passed.append("typed text is read back; a field that drops it is reported unverified")
 
         # The select sits after more scope text than the guard keeps, so only its own options can catch this.
         filler = '<p style="height:20px;overflow:hidden">' + "filler " * 1500 + "</p>"

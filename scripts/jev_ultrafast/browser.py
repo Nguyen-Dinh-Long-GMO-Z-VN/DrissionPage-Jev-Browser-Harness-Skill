@@ -188,6 +188,24 @@ def browser_operation(request):
             raise StalePage("Document changed during evaluation")
         return result.get("result", {}).get("value")
 
+    def read_back(node, text):
+        """Read-only check that a fill landed. The input already happened, so never raise or retry here."""
+        expected = " ".join(text.split())
+        for attempt in range(4):
+            if attempt:
+                time.sleep(0.05)
+            try:
+                result = call("Runtime.evaluate", returnByValue=True, expression=(
+                    f"(() => {{ const e=window.__jevFast?.nodes.get({node}); "
+                    "return e ? ('value' in e ? String(e.value) : e.innerText) : null; })()"
+                ))
+                actual = result.get("result", {}).get("value")
+            except Exception:
+                return "unverified"
+            if isinstance(actual, str) and " ".join(actual.split()) == expected:
+                return "verified"
+        return "unverified"
+
     if operation == "act":
         action = request["action"]
         kind = action["kind"]
@@ -248,6 +266,7 @@ def browser_operation(request):
                         modifiers=4 if sys.platform == "darwin" else 2,
                     )
                     call("Input.insertText", text=request["text"])
+                    return {"executed": action["id"], "typed": read_back(action["node"], request["text"])}
         return {"executed": action["id"]}
 
     info = evaluate(READ_STATE)

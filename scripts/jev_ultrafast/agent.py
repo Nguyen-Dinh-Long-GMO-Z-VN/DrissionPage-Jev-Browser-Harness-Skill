@@ -40,6 +40,8 @@ def summarize(agent):
         "model_calls": len(s["decisions"]),
         "elapsed_ms": s["elapsed_ms"],
         "history": [h["action"] for h in s["history"]],
+        # A DONE choice is not proof: name every field whose text could not be read back.
+        "unverified_text": [h["action"] for h in s["history"] if h.get("typed") == "unverified"],
     }
 
 
@@ -200,7 +202,7 @@ class Agent:
 
         # Browser.act checks freshness immediately before input, including after text generation.
         try:
-            state["browser"].act(action, page, text=text)
+            result = state["browser"].act(action, page, text=text)
         except StalePage:
             raise  # Rejected before any input; a fresh decision is safe.
         except Exception:
@@ -212,7 +214,7 @@ class Agent:
             raise
         self.pending_text = None
         # Record execution before observing. A stale post-action observation must not erase the action.
-        record()
+        record(typed=(result or {}).get("typed"))
         state["page"] = state["browser"].observe(screenshot=self.screenshots)
         state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
         state["history"][-1].update(

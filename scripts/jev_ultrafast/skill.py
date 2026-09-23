@@ -6,6 +6,7 @@ tab it opened or detach from one it borrowed. `jev_helpers.py` (Browser Harness)
 """
 
 from . import agent as loop
+from .browser import StalePage
 from .model import MissingValue, choose, field_context, field_text
 
 
@@ -68,7 +69,14 @@ class Skill:
                 return {"executed": None, "blocked": str(missing)}
         browser = self.open_browser(None, **pending["target"])
         try:
-            browser.act(action, page, text=text)
+            result = browser.act(action, page, text=text)
+        except StalePage:
+            raise  # Rejected before any input, so choosing again is safe.
+        except Exception as error:
+            # Input may already have reached the page and the decision is consumed: never blindly act again.
+            raise RuntimeError(
+                f"{action['label']}: outcome unknown after a browser error; inspect the page before continuing."
+            ) from error
         finally:
             self.release(browser)
-        return {"executed": action["id"], "label": action["label"], "text": text}
+        return {"executed": action["id"], "label": action["label"], "text": text, "typed": (result or {}).get("typed")}

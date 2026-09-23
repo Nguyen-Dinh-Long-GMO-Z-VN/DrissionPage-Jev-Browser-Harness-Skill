@@ -61,9 +61,9 @@ PY
 
 | Helper | What it does |
 | --- | --- |
-| `jev_run(goal, max_steps=20)` | Runs the full loop on the current tab until `done` or `blocked`. Returns status, reason, URL, steps, model calls, elapsed time, and history. |
+| `jev_run(goal, max_steps=20)` | Runs the full loop on the current tab until `done` or `blocked`. Returns status, reason, URL, steps, model calls, elapsed time, history, and `unverified_text` (fields whose typed text could not be read back). |
 | `jev_choose(goal)` | One observation and one TypeSafe decision. Executes nothing. |
-| `jev_act()` | Executes the pending `jev_choose` decision once. The decision is consumed before input, so a second call raises instead of clicking twice. |
+| `jev_act()` | Executes the pending `jev_choose` decision once. The decision is consumed before input, so a second call raises instead of clicking twice. Returns `typed` (`verified` or `unverified`) for text fields. |
 
 Write the goal as an outcome ("Find one-way flights from Zurich to London on 20 Sept, one adult, economy"), not as a script of clicks. If a field needs a value the goal does not contain, the run stops with `status: "blocked"` and names the field. Supply it and run again.
 

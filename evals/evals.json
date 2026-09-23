@@ -18,6 +18,30 @@
       "prompt": "Upload ~/Documents/cv.pdf to the file input on this job application page in my browser and submit it.",
       "expected_output": "Claude recognizes a file upload is outside Jev's operations and uses plain browser-harness CDP instead of jev_run.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Log in to my company's admin dashboard in the browser and open the billing page. I'm not signed in yet. browser-harness is running.",
+      "expected_output": "Claude sees the login wall, stops and asks the user to sign in, and does not type or request a password through Jev or raw CDP. It continues only after the user says they are signed in.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Post 'Hello from Jev' to my Facebook timeline, visible only to me. Chrome is signed in and browser-harness is running.",
+      "expected_output": "Claude opens the composer with Jev, confirms the audience is Only me, and checks the `typed` result. When it is 'unverified' it reads the field, inserts the text with Input.insertText, verifies it, and presses Post with a full mouse press and release. It confirms the post afterwards from page state rather than trusting DONE.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "BH_DOMAIN_SKILLS=1 is set. Find the top story on Hacker News in my browser.",
+      "expected_output": "Claude lists and reads $BH_AGENT_WORKSPACE/domain-skills/hackernews/ before starting, then uses Jev with an outcome-style goal, and reports the story it read from the page.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "What's the current population of Iceland? Use my browser if needed.",
+      "expected_output": "Claude answers from a plain HTTP fetch or search and does not open a browser or call Jev, since no interaction or login is needed.",
+      "files": []
     }
   ]
 }
