@@ -4,7 +4,7 @@
 
 **Give a browser agent one goal. It reads a compact element table and acts in one model call per step.**
 
-[TypeSafe's Jev](https://docs.typesafe.ai/introduction) picks an operation and a target element from an indexed table of the page's visible controls. A small text LLM writes text only when the operation is `TYPE_TEXT`. This repo ships the loop as a Python library, a local inspector, and an agent skill (`browser-jev-harness`) that runs the loop on a [Browser Harness](https://github.com/browser-use/browser-harness) tab.
+[TypeSafe's Jev](https://docs.typesafe.ai/introduction) picks an operation and a target element from an indexed table of the page's visible controls. A small text LLM writes text only when the operation is `TYPE_TEXT`. This repo ships the loop as a Python library, a local inspector, and an agent skill (`browser-jev-harness`) that runs the loop on a [Browser Harness](https://github.com/browser-use/browser-harness) tab or, optionally, on a [DrissionPage](https://github.com/g1879/DrissionPage) tab.
 
 [Measurements](docs/performance.md) · [Read the loop](scripts/jev_ultrafast/agent.py)
 
@@ -58,7 +58,20 @@ PY
 
 Write the goal as an outcome ("Find one-way flights from Zurich to London on 20 Sept, one adult, economy"), not as a script of clicks. If a field needs a value the goal does not contain, the run stops with `status: "blocked"` and names the field. Supply it and run again.
 
-A `DONE` result is a claim, not proof. Confirm the outcome with page state you read yourself, or with a real network response via `jev_ultrafast.listener.wait_for_response`. [SKILL.md](SKILL.md) covers verification, when to fall back to manual CDP, and gotchas.
+**On DrissionPage.** `scripts/jev_drission.py` runs the same loop with no Browser Harness. Only the transport changes: DrissionPage carries each CDP call, and the snapshot, guards, and execution are shared.
+
+```bash
+uv run --with-requirements scripts/requirements-drission.txt python - <<'PY'
+import sys; sys.path.insert(0, "scripts")
+from jev_drission import jev_run
+print(jev_run("Open the article about Godel's incompleteness theorems.",
+              url="https://en.wikipedia.org/wiki/Main_Page"))
+PY
+```
+
+DrissionPage connects to Chrome on a debugging port (9222 by default) and starts Chrome there if none is running. Its built-in `tab.listen` replaces the harness network listener; start it before the action you want to verify. It has been run end to end against a local page, not benchmarked, so the numbers below are for Browser Harness only. **Licensing:** DrissionPage allows personal, learning, and non-profit use, and commercial use needs its author's authorization. It is an optional dependency, not bundled here. Read its LICENSE before commercial use.
+
+A `DONE` result is a claim, not proof. Confirm the outcome with page state you read yourself, or with a real network response via `jev_ultrafast.listener.wait_for_response` (`jev_ultrafast.drission.wait_for_response` on DrissionPage). [SKILL.md](SKILL.md) covers verification, when to fall back to manual CDP, and gotchas.
 
 ## Use it as a library
 
@@ -150,6 +163,7 @@ The same policy opened the requested Wikipedia article in **2.798 s** and passed
 | [scripts/jev_ultrafast/agent.py](scripts/jev_ultrafast/agent.py) | The complete loop and text-helper handoff |
 | [scripts/jev_ultrafast/snapshot.js](scripts/jev_ultrafast/snapshot.js) | Atomic DOM snapshot, indexed controls, freshness guards |
 | [scripts/jev_ultrafast/browser.py](scripts/jev_ultrafast/browser.py) | Browser connection, current geometry, execution |
+| [scripts/jev_ultrafast/drission.py](scripts/jev_ultrafast/drission.py) · [scripts/jev_drission.py](scripts/jev_drission.py) | DrissionPage transport, listener, and skill entry points |
 | [scripts/jev_ultrafast/model.py](scripts/jev_ultrafast/model.py) | Dynamic operation/target heads and text generation |
 | [scripts/jev_ultrafast/questions.py](scripts/jev_ultrafast/questions.py) | Model instructions |
 | [scripts/jev_ultrafast/demo.py](scripts/jev_ultrafast/demo.py) | Local inspector |

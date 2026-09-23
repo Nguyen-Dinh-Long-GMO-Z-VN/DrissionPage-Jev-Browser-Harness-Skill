@@ -3,7 +3,7 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "I have Chrome open and browser-harness set up in the jev-ultrafast repo. Go to the English Wikipedia main page and open the article about Gödel's incompleteness theorems for me.",
+      "prompt": "I have Chrome open and browser-harness set up. Go to the English Wikipedia main page and open the article about Gödel's incompleteness theorems for me.",
       "expected_output": "Claude loads the skill, opens a harness tab, calls jev_run with an outcome-style goal, and reports a final URL/title for the Gödel article. It does not read the full accessibility tree.",
       "files": []
     },

@@ -1,4 +1,8 @@
-"""Observed actions through Browser Harness; one CDP session, no per-step subprocess."""
+"""Observed actions over one CDP session, no per-step subprocess.
+
+`Browser` talks CDP through Browser Harness. `drission.DrissionBrowser` swaps only the transport; the
+snapshot, guards, and execution below are shared. Neither backend is imported until it is used.
+"""
 
 import hashlib
 import json
@@ -6,12 +10,16 @@ import sys
 import time
 from pathlib import Path
 
-from browser_harness.admin import ensure_daemon
-from browser_harness.helpers import cdp
-
 # Atomically read visible content and controls, preserving actual DOM node identity.
 READ_STATE = Path(__file__).with_name("snapshot.js").read_text()
 MARKER = f"(() => {{ const state={READ_STATE}; return state?.marker ?? null; }})()"
+
+
+def cdp(method, **params):
+    """Browser Harness CDP call, imported on first use so other backends do not need it."""
+    from browser_harness.helpers import cdp as harness_cdp
+
+    return harness_cdp(method, **params)
 
 
 class StalePage(ValueError):
@@ -20,6 +28,8 @@ class StalePage(ValueError):
 
 class Browser:
     def __init__(self, url):
+        from browser_harness.admin import ensure_daemon
+
         ensure_daemon()
         self.target = cdp("Target.createTarget", url="about:blank", background=True)["targetId"]
         self.session = cdp("Target.attachToTarget", targetId=self.target, flatten=True)["sessionId"]
@@ -85,14 +95,12 @@ class Browser:
                     awaitPromise=True,
                     returnByValue=True,
                 )
-            except RuntimeError:
+            except (RuntimeError, StalePage):
                 pass
         deadline = time.monotonic() + 15
         while True:
             try:
-                return browser_operation(
-                    {"operation": "observe", "session": self.session, "screenshot": screenshot}
-                )
+                return self._operate({"operation": "observe", "session": self.session, "screenshot": screenshot})
             except StalePage:
                 if time.monotonic() > deadline:
                     raise
@@ -145,9 +153,12 @@ class Browser:
             raise StalePage("Page changed since this decision. Observe again.")
         if action["kind"] == "wait":
             time.sleep(0.1)
-        result = browser_operation({"operation": "act", "session": self.session, "action": action, "text": text})
+        result = self._operate({"operation": "act", "session": self.session, "action": action, "text": text})
         self.after_input = action if action["kind"] != "wait" else None
         return result
+
+    def _operate(self, request):
+        return browser_operation(request)
 
     def close(self):
         if self.target:
@@ -165,6 +176,8 @@ def browser_operation(request):
     session = request["session"]
 
     def call(method, **params):
+        if "call" in request:
+            return request["call"](method, **params)
         return cdp(method, session_id=session, **params)
 
     def evaluate(expression):

@@ -28,6 +28,21 @@ def initial_state(browser, goal, page, *, record=False):
     )
 
 
+def summarize(agent):
+    """The compact result a skill returns: outcome, page, and cost of the run."""
+    s = agent.snapshot()
+    return {
+        "status": s["status"],
+        "reason": s["reason"],
+        "url": s["page"]["url"],
+        "title": s["page"]["title"],
+        "steps": len(s["history"]),
+        "model_calls": len(s["decisions"]),
+        "elapsed_ms": s["elapsed_ms"],
+        "history": [h["action"] for h in s["history"]],
+    }
+
+
 class Agent:
     max_steps = MAX_STEPS
 

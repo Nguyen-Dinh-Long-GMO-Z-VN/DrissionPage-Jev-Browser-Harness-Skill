@@ -57,6 +57,29 @@ Write the goal as an outcome, not a script: "Find one-way flights from Zurich to
 economy", not "click the From box, type Zurich". Jev picks the steps; scripted steps defeat the point and break
 when the page changes.
 
+## Alternative backend: DrissionPage
+
+`scripts/jev_drission.py` runs the same loop on [DrissionPage](https://github.com/g1879/DrissionPage) with no
+browser-harness. It has the same `jev_run` / `jev_choose` / `jev_act`; only the transport differs.
+
+```bash
+uv run --with-requirements <skill base dir>/scripts/requirements-drission.txt python - <<'PY'
+import sys; sys.path.insert(0, "<skill base dir>/scripts")
+from jev_drission import jev_run
+print(jev_run("Open the article about Godel's incompleteness theorems.",
+              url="https://en.wikipedia.org/wiki/Main_Page"))
+PY
+```
+
+- DrissionPage connects to Chrome on a debugging port (`port=9222` by default) and starts Chrome there if nothing
+  is listening. With `url=` the run owns a background tab and closes it; without it, the most recently active tab
+  is driven and left open. The first connection right after Chrome launches can fail once; retry.
+- Outcome checks use DrissionPage's own listener. Call `tab.listen.start("<url fragment>")` **before** the action,
+  then `jev_ultrafast.drission.wait_for_response(tab)`. It is not retroactive, unlike the harness listener below.
+- **License:** DrissionPage allows personal, learning, and non-profit use; commercial use needs its author's
+  authorization. It is an optional dependency and is not bundled. Read its LICENSE before using this backend for
+  commercial work; the default harness path does not involve it.
+
 ## Verify the outcome
 
 A `DONE` choice is a claim, not proof. Confirm with a real network packet (`jev_ultrafast.listener`) or with

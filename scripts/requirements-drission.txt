@@ -1,0 +1,2 @@
+DrissionPage
+httpx[http2]>=0.28,<1

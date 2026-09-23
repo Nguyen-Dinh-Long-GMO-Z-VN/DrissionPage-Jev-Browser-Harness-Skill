@@ -8,8 +8,6 @@ returned 200 — without trusting the page.
 
 import time
 
-from browser_harness.helpers import drain_events
-
 
 def collect(events, session_id, requests):
     """Fold drained events into a response list. `requests` maps requestId to
@@ -47,6 +45,8 @@ def wait_for_response(call, session_id, match, timeout=15):
     response observed before this call is still found. Drains the daemon's
     shared event buffer: do not run two waits at once.
     """
+    from browser_harness.helpers import drain_events
+
     call("Network.enable")
     requests = {}
     deadline = time.monotonic() + timeout

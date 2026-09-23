@@ -37,7 +37,7 @@ for _p in (Path.cwd(), *Path.cwd().parents, HERE.parent):
         break
 
 from browser_harness.helpers import cdp, current_tab  # noqa: E402
-from jev_ultrafast.agent import Agent  # noqa: E402
+from jev_ultrafast.agent import Agent, summarize  # noqa: E402
 from jev_ultrafast.browser import Browser  # noqa: E402
 from jev_ultrafast.model import MissingValue, choose, field_context, field_text  # noqa: E402
 
@@ -56,18 +56,7 @@ def _detach(browser):
         browser.session = None
 
 
-def _result(agent):
-    s = agent.snapshot()
-    return {
-        "status": s["status"],
-        "reason": s["reason"],
-        "url": s["page"]["url"],
-        "title": s["page"]["title"],
-        "steps": len(s["history"]),
-        "model_calls": len(s["decisions"]),
-        "elapsed_ms": s["elapsed_ms"],
-        "history": [h["action"] for h in s["history"]],
-    }
+_result = summarize
 
 
 def jev_run(goal, url=None, max_steps=20):
