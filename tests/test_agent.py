@@ -6,7 +6,6 @@ from copy import deepcopy
 from unittest.mock import Mock
 
 import pytest
-
 from jev_ultrafast import agent as loop
 from jev_ultrafast import model
 from jev_ultrafast.browser import StalePage, browser_operation, fingerprint
@@ -320,3 +319,18 @@ def test_navigation_during_prediction_reobserves_without_action(runner):
     assert runner.state["status"] == "ready"
     assert runner.state["decision"] is None
     runner.state["browser"].act.assert_not_called()
+
+
+@pytest.mark.parametrize("error", [RuntimeError("Dropdown execution was interrupted"), TimeoutError("CDP")])
+def test_browser_error_after_possible_mutation_is_logged_and_blocks_next_choice(runner, error):
+    runner.state["decision"] = decision("e3")
+    runner.state["browser"].act.side_effect = error
+    with pytest.raises(type(error)):
+        runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["status"] == "blocked"
+    assert "outcome unknown" in runner.state["reason"]
+    assert runner.state["history"][-1]["action"] == "Go"
+    assert runner.state["history"][-1]["outcome"] == "unknown"
+    with pytest.raises(ValueError, match="run has stopped"):
+        runner.command("predict")
+    runner.state["browser"].act.assert_called_once()

@@ -113,6 +113,7 @@ def main():
         assert browser.evaluate("document.querySelector('#category').value") == "Design"
         passed.append("native dropdown selects an observed option")
 
+
         browser.evaluate("document.querySelector('#query').addEventListener('input',()=>setTimeout(()=>{"
                          "document.querySelector('#suggestions').innerHTML='<div role=option>Generated</div>'"
                          "},60))")
@@ -124,6 +125,16 @@ def main():
         assert value == "Generated", repr(value)
         assert any(a.get("role") == "option" for a in page["actions"])
         passed.append("real text input waits for asynchronous combobox suggestions")
+
+        # The select sits after more scope text than the guard keeps, so only its own options can catch this.
+        filler = '<p style="height:20px;overflow:hidden">' + "filler " * 1500 + "</p>"
+        browser.evaluate("document.body.innerHTML=" + repr(filler + """
+          <select aria-label="Plan"><option value="a">Basic</option><option value="b">Pro</option></select>"""))
+        page = browser.observe(screenshot=False)
+        plan = next(a for a in page["actions"] if a["kind"] == "select")
+        browser.evaluate("document.querySelector('option[value=b]').textContent='Free'")
+        assert not browser.fresh(page, plan)
+        passed.append("dropdown option relabel invalidates even past the scope text limit")
 
         browser.evaluate("document.body.innerHTML=" + repr("""
           <div style="height:600px"></div>

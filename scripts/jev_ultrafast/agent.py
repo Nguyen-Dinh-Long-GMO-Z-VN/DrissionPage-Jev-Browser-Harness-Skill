@@ -172,32 +172,47 @@ class Agent:
                     return
                 self.pending_text = (context, text, helper)
                 state["text_calls"].append({**helper, "field": action["label"], "value": text})
+
+        def record(**extra):
+            state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
+            state["history"].append(
+                {
+                    "step": len(state["history"]) + 1,
+                    "action": action["label"],
+                    "kind": action["kind"],
+                    "choice": selected,
+                    "probability": decision["probabilities"][selected],
+                    "confidence": decision["confidence"],
+                    "latency_ms": decision["latency_ms"],
+                    "text": text,
+                    "text_helper": helper["model"] if helper else None,
+                    "text_latency_ms": helper["latency_ms"] if helper else 0,
+                    "operation": decision["operation"],
+                    "target": decision["target"],
+                    "page_changed": None,
+                    "url": page["url"],
+                    "usage": decision["usage"],
+                    "executed_ms": round((time.perf_counter() - state["started_at"]) * 1000),
+                    "elapsed_ms": state["elapsed_ms"],
+                    **extra,
+                }
+            )
+
         # Browser.act checks freshness immediately before input, including after text generation.
-        state["browser"].act(action, page, text=text)
+        try:
+            state["browser"].act(action, page, text=text)
+        except StalePage:
+            raise  # Rejected before any input; a fresh decision is safe.
+        except Exception:
+            # The input may already have reached the page. Log it and stop: never choose again blindly.
+            self.pending_text = None
+            record(outcome="unknown")
+            state["status"] = "blocked"
+            state["reason"] = f"{action['label']}: outcome unknown after a browser error; inspect the page first."
+            raise
         self.pending_text = None
-        state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
         # Record execution before observing. A stale post-action observation must not erase the action.
-        state["history"].append(
-            {
-                "step": len(state["history"]) + 1,
-                "action": action["label"],
-                "kind": action["kind"],
-                "choice": selected,
-                "probability": decision["probabilities"][selected],
-                "confidence": decision["confidence"],
-                "latency_ms": decision["latency_ms"],
-                "text": text,
-                "text_helper": helper["model"] if helper else None,
-                "text_latency_ms": helper["latency_ms"] if helper else 0,
-                "operation": decision["operation"],
-                "target": decision["target"],
-                "page_changed": None,
-                "url": page["url"],
-                "usage": decision["usage"],
-                "executed_ms": round((time.perf_counter() - state["started_at"]) * 1000),
-                "elapsed_ms": state["elapsed_ms"],
-            }
-        )
+        record()
         state["page"] = state["browser"].observe(screenshot=self.screenshots)
         state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
         state["history"][-1].update(

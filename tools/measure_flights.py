@@ -14,7 +14,9 @@ parser.add_argument("--source", default=".")
 parser.add_argument("--output", required=True)
 args = parser.parse_args()
 source = Path(args.source).resolve()
-sys.path.insert(0, str(source / "scripts" if (source / "scripts" / "jev_ultrafast").exists() else source))
+import_root = source / "scripts" if (source / "scripts" / "jev_ultrafast").exists() else source
+package_dir = import_root / "jev_ultrafast"
+sys.path.insert(0, str(import_root))
 from jev_ultrafast import Agent  # noqa: E402
 from jev_ultrafast import browser as browser_module  # noqa: E402
 
@@ -25,7 +27,7 @@ folder = Path(args.output)
 folder.mkdir(parents=True, exist_ok=False)
 source_hashes = {
     p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-    for p in (source / "jev_ultrafast").iterdir() if p.suffix in {".py", ".js"}
+    for p in package_dir.iterdir() if p.suffix in {".py", ".js"}
 }
 raw = browser_module.cdp
 calls = defaultdict(list)

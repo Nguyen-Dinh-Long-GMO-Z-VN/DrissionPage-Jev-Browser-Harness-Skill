@@ -50,7 +50,9 @@
     return [identity(e),role(e),name(e),e.value??null,e.checked??null,e.selectedIndex??null,
       e.readOnly??null,e.matches(':disabled'),e.getAttribute('aria-disabled'),
       e.getAttribute('aria-expanded'),e.getAttribute('aria-checked'),e.getAttribute('aria-selected'),
-      e.getAttribute('href'),scope?.innerText?.slice(0,6000)||''];
+      e.getAttribute('href'),scope?.innerText?.slice(0,6000)||'',
+      // Option meaning must not depend on the truncated scope text above.
+      e.tagName==='SELECT' ? [...e.options].map(o=>[o.value,o.label,o.disabled||!!o.closest('optgroup[disabled]')]) : null];
   };
   const actions=[];
   for (const e of document.querySelectorAll(selector)) {
