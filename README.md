@@ -6,11 +6,7 @@
 
 [TypeSafe's Jev](https://docs.typesafe.ai/introduction) picks an operation and a target element from an indexed table of the page's visible controls. A small text LLM writes text only when the operation is `TYPE_TEXT`. This repo ships the loop as a Python library, a local inspector, and an agent skill (`browser-jev-harness`) that runs the loop on a [Browser Harness](https://github.com/browser-use/browser-harness) tab.
 
-**Zürich → London on Google Flights in 7.1 seconds.** One natural-language goal, generated text, and loading waits included.
-
-<a href="docs/demo.mp4"><img src="docs/demo.gif" alt="A real Google Flights search at 1× speed" width="100%" /></a>
-
-[Watch the MP4](docs/demo.mp4) · [Measurements](docs/performance.md) · [Read the loop](jev_ultrafast/agent.py)
+[Measurements](docs/performance.md) · [Read the loop](jev_ultrafast/agent.py)
 
 ## Contents
 
@@ -37,7 +33,7 @@ Open **http://127.0.0.1:8766** and click **Start demo → Run automatically**. T
 
 Chrome connects through Browser Harness, installed by `uv sync`. Run `uv run browser-harness --doctor` if it needs connecting, and allow remote debugging in Chrome when prompted.
 
-`TEXT_MODEL_API_KEY` is an OpenRouter key in the example configuration, and the demo uses `inception/mercury-2.5` with reasoning disabled. Any OpenAI-compatible endpoint works with the text helper: set the model, endpoint, and reasoning setting in `.env`. Credentials stay server-side and `.env` is git-ignored.
+`TEXT_MODEL_API_KEY` is an OpenRouter key in the example configuration, and the default configuration uses `inception/mercury-2.5` with reasoning disabled. Any OpenAI-compatible endpoint works with the text helper: set the model, endpoint, and reasoning setting in `.env`. Credentials stay server-side and `.env` is git-ignored.
 
 ## Use it as a skill
 
@@ -129,7 +125,7 @@ Target questions are speculative. If the operation is `CLICK`, only `click_targe
 **Why it is fast**
 
 - **One request per decision cycle.** Operation and target heads share the same observed state.
-- **No screenshots in the loop.** Jev reads structured state. The inspector opts into screenshots; the demo video is a separate screencast.
+- **No screenshots in the loop.** Jev reads structured state. The inspector opts into screenshots.
 - **One browser call per snapshot.** Visible controls, names, values, and text are read atomically, keeping references to the real DOM nodes.
 - **Validated targets.** Clicks check the document, form values, target, and nearby context, then resolve current geometry and reject covered controls before input.
 - **Waits for useful state.** After typing into a combobox, wait up to 200 ms for suggestions. Other interactions wait at most two animation frames or 50 ms. A page younger than 2.5 s must hold still for 100 ms (capped at 500 ms) before a decision.
@@ -139,8 +135,6 @@ Target questions are speculative. If the operation is `CLICK`, only `click_targe
 - **Interrupted text requests are reused.** A generated value survives a stale-page retry only if the entire text-helper input is unchanged.
 
 ## Evidence and limits
-
-The current video is a **7,073 ms** Google Flights run. Timing starts after the initial page observation and includes model calls, generated text, browser work, stale decisions, and loading waits. A fresh independent check verifies the one-way setting, Zürich, London, September 20, 2026, and visible flight options. The video plays at 1× speed.
 
 In six alternating runs with identical models and settings, both versions passed **3/3**. Median task time went from **9.450 s → 7.092 s** (25% lower); median browser protocol calls went from **1,092 → 101**. That is three repeats of one task on one browser profile, not a general reliability benchmark.
 
@@ -160,8 +154,8 @@ The same policy opened the requested Wikipedia article in **2.798 s** and passed
 | [jev_ultrafast/demo.py](jev_ultrafast/demo.py) | Local inspector |
 | [skills/browser-jev-harness](skills/browser-jev-harness/SKILL.md) | The agent skill: helpers, benchmark script, evals, references |
 | [examples/](examples) | Runnable tasks (`run.py`, `flights.py`) |
-| [scripts/](scripts) | Guard checks, measurement, recording, and rendering |
-| [docs/](docs) | Design notes, measurements, demo media |
+| [scripts/](scripts) | Guard checks and measurement |
+| [docs/](docs) | Design notes and measurements |
 
 ## Development
 
@@ -173,7 +167,7 @@ node --check jev_ultrafast/snapshot.js
 uv build
 ```
 
-CI runs the same checks on every push to `main` and on pull requests. Tests are offline and never call paid APIs. `uv run python scripts/check_guards.py` checks real controls in a local browser without model calls. Live examples, `skills/browser-jev-harness/scripts/bench.py`, and the recording scripts make paid API calls. `scripts/record_flights.py <new-folder>` captures original browser timestamps, and `scripts/render_demo.py <recording-folder>` renders that verified run at 1× speed. Raw traces stay ignored.
+CI runs the same checks on every push to `main` and on pull requests. Tests are offline and never call paid APIs. `uv run python scripts/check_guards.py` checks real controls in a local browser without model calls. Live examples, `skills/browser-jev-harness/scripts/bench.py`, and the measurement and recording scripts make paid API calls. Raw traces stay ignored.
 
 ---
 
