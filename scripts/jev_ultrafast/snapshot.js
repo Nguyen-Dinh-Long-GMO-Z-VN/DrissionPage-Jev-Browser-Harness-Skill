@@ -30,8 +30,23 @@
     for (const fx of [0.2,0.5,0.8]) for (const fy of [0.25,0.75]) pts.push([r.x+r.width*fx,r.y+r.height*fy]);
     for (let i=0;i<random;i++) pts.push([r.x+Math.random()*r.width,r.y+Math.random()*r.height]);
     for (const [x,y] of pts)
-      if (x>=0 && y>=0 && x<innerWidth && y<innerHeight && e.contains(document.elementFromPoint(x,y))) return {x,y};
+      if (x>=0 && y>=0 && x<innerWidth && y<innerHeight && lands(e,document.elementFromPoint(x,y))) return {x,y};
     return null;
+  };
+  // A click on h reaches e's widget: h is e or inside it, or h is e's own visual layer. Result rows often put
+  // their visible content in a sibling above an accessible link and handle clicks on a shared container (Google
+  // Flights). A layer counts only if it lies within e's box, shares an ancestor with e below <body>, and is not
+  // part of another control; a banner, consent frame, or page column covering e fails at least one of these.
+  const lands = (e,h) => {
+    if (!h || e.contains(h)) return !!h;
+    if (h===document.body || h===document.documentElement) return false;
+    const r=e.getBoundingClientRect(), q=h.getBoundingClientRect();
+    if (q.left<r.left-2 || q.top<r.top-2 || q.right>r.right+2 || q.bottom>r.bottom+2) return false;
+    let common=h.parentElement;
+    while (common && !common.contains(e)) common=common.parentElement;
+    if (!common || common===document.body || common===document.documentElement) return false;
+    const other=h.closest(selector);
+    return !other || other.contains(e);
   };
   cache.point = (e,random=0) => (visible(e) && cache.hit(e,random)) ||
     (cache.proxy(e) && cache.hit(cache.proxy(e),random)) || null;
@@ -138,6 +153,8 @@
   const omitted_actions=Math.max(0,actions.length-250);
   actions.splice(250);
   actions.forEach((a,i)=>a.id='e'+(i+1));
+  // Fields the model could choose. A fill may follow focus only into a field outside this set (browser.py).
+  cache.offered=new Set(actions.map(a=>a.node));
   if (scrollY+innerHeight<height-2) actions.push({id:'scroll_down',kind:'scroll',label:'Scroll down',delta:560});
   if (scrollY>0) actions.push({id:'scroll_up',kind:'scroll',label:'Scroll up',delta:-560});
   actions.push({id:'wait',kind:'wait',label:'Wait for the page to update'});

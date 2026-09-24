@@ -18,6 +18,14 @@
 > | Local hotel search + filters | 3/3 · 3.9 s, 4.1 s, 7.8 s | — | 2/2 · 3.8 s, 4.4 s (before the window change) |
 >
 > Small sample, one machine, TypeSafe at ~0.5 s per decision from this network. The text helper was `gemini-2.5-flash-lite` on a free tier, which took 1–17 s per call and caused the 21.0 s and 7.8 s outliers. Fifteen further runs hit its quota (HTTP 429). They are excluded here but kept with every run's timings in [docs/window-fix-measurement.json](docs/window-fix-measurement.json). The Flights failures are the reliability result. The timing differences are within noise and are **not** a speed claim.
+>
+> **After porting upstream PRs** #131, #113, #111, #137, #99, #124, #116, and #80, live runs used `gemini-2.5-flash` as the text helper. The final code passed Flights 1/1 (11.7 s, all 7 checks), Wikipedia 1/1 (4.5 s), and the hotel fixture 1/2. The failed hotel run skipped the offered **Find stays** button, which was a policy choice. Runs made while porting exposed three regressions, each fixed before the final runs:
+>
+> - The focus check rejected a combobox's own search popup.
+> - The settle call exceeded the harness's 5 s IPC timeout.
+> - The hit test hid Google's result rows.
+>
+> All runs are in the same JSON file under `upstream_ports`.
 
 ![Jev Ultrafast architecture: entry points, shared agent loop, browser backends, and independent verification](docs/jev-architecture.png)
 

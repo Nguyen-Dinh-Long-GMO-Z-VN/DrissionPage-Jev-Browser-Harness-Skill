@@ -161,7 +161,9 @@ def choose(state, goal, history):
             "elements": elements,
             "recent_actions": [
                 # `typed: unverified` tells the model a field may not hold the text it was sent.
-                {k: h[k] for k in ("action", "kind", "text", "page_changed", "typed") if h.get(k) is not None}
+                {k: h.get(k) for k in ("action", "kind", "text", "page_changed")} | (
+                    {"typed": h["typed"]} if h.get("typed") else {}
+                )
                 for h in history[-10:]
             ],
         },

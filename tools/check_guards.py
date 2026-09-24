@@ -309,6 +309,21 @@ def main():
         assert browser.evaluate("window.wrappedHit") == 1
         passed.append("a link wrapped over two lines is clicked on a visible fragment")
 
+        # A result row whose visible content is a sibling layer above its accessible link (Google Flights).
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <ul><li id="row" style="position:relative;height:70px;list-style:none">
+            <div role="link" tabindex="0" aria-label="Nonstop 1 hr 45 min. Select flight"
+              style="position:absolute;inset:0"></div>
+            <div style="position:absolute;left:20px;top:10px;width:300px;height:40px">11:10 AM easyJet</div>
+          </li></ul>"""))
+        browser.evaluate("document.querySelector('#row').addEventListener('click',()=>{window.rowHit=1})")
+        page = browser.observe(screenshot=False)
+        row = next((a for a in page["actions"] if "Select flight" in a["label"]), None)
+        assert row is not None, [a["label"] for a in page["actions"]]
+        browser.act(row, page)
+        assert browser.evaluate("window.rowHit") == 1
+        passed.append("a row whose content layer sits above its link is offered and clicked")
+
         # Styled-away checkboxes and radios are operated through their labels (upstream PR #113).
         browser.evaluate("document.body.innerHTML=" + repr("""
           <style>.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -344,6 +359,18 @@ def main():
                 raise AssertionError(f"Typing must stop when {event} moves focus away")
             assert browser.evaluate("document.querySelector('#b').value") == "keep me", event
         passed.append("typing stops when a click or key handler moves focus to another field")
+
+        # A combobox that opens its own search field on click (Google Flights' "Where from?") types there.
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <input id="from" role="combobox" aria-label="Where from?" value="Da Nang">
+          <div id="popup" hidden><input id="search" aria-label="Where else?"></div>"""))
+        browser.evaluate("document.querySelector('#from').addEventListener('mouseup',()=>{"
+                         "document.querySelector('#popup').hidden=false;document.querySelector('#search').focus()})")
+        page = browser.observe(screenshot=False)
+        origin = next(a for a in page["actions"] if a["label"] == "Where from?" and a["kind"] == "fill")
+        assert browser.act(origin, page, text="Zurich")["typed"] == "verified"
+        assert browser.evaluate("document.querySelector('#search').value") == "Zurich"
+        passed.append("a field that opens its own search popup is typed into through that popup")
 
         # Date and time inputs are fillable with ISO values (upstream PR #116).
         browser.evaluate("document.body.innerHTML=" + repr("""

@@ -90,8 +90,25 @@ def cdp(method, **params):
     return harness_cdp(method, **params)
 
 
+# Longest in-page wait (WAIT with requests in flight) plus margin, for the settle call's response.
+SETTLE_TIMEOUT_S = 15
+
 # Chrome renders these as segmented spinners; they ignore inserted text and take an ISO value.
 SEGMENTED_INPUTS = {"time", "date", "datetime-local", "month", "week"}
+
+
+# Where a fill's text would land: "self" when the observed field holds focus; "editor" when focus is in an
+# enabled, visible text field that was not offered in the last observation (a popup the click opened); else null.
+FOCUS_TARGET = """(node => {
+  const cache=window.__jevFast, e=cache?.nodes.get(node), a=document.activeElement;
+  if (!e?.isConnected || !a) return null;
+  const writable=x=>!x.matches(':disabled') && !x.readOnly && x.getAttribute('aria-readonly')!=='true';
+  if (e.contains(a)) return writable(e) ? 'self' : null;
+  const text=a.isContentEditable || a.tagName==='TEXTAREA' ||
+    (a.tagName==='INPUT' && ['text','search','email','url','tel','number'].includes(a.type));
+  return text && writable(a) && a.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}) &&
+    !cache.offered?.has(cache.ids.get(a)) ? 'editor' : null;
+})"""
 
 
 class StalePage(ValueError):
@@ -132,7 +149,10 @@ class Browser:
         browser._track_requests()
         return browser
 
-    def call(self, method, **params):
+    def call(self, method, _timeout=None, **params):
+        """One CDP call. `_timeout` (seconds) lengthens the response wait for a call that awaits the page."""
+        if _timeout:
+            params["_response_timeout"] = _timeout
         return cdp(method, session_id=self.session, **params)
 
     def evaluate(self, expression):
@@ -151,8 +171,10 @@ class Browser:
                     expression=SETTLE_AFTER_INPUT + "(" + json.dumps(action) + ")",
                     awaitPromise=True,
                     returnByValue=True,
+                    # WAIT can hold the page promise for 10 s; the harness answers after 5 s by default.
+                    _timeout=SETTLE_TIMEOUT_S,
                 )
-            except (RuntimeError, StalePage):
+            except (RuntimeError, StalePage, TimeoutError):
                 pass
         deadline = time.monotonic() + 15
         while True:
@@ -257,15 +279,17 @@ def browser_operation(request):
             raise StalePage("Document changed during evaluation")
         return result.get("result", {}).get("value")
 
-    def read_back(node, text):
+    def read_back(node, text, focus="self"):
         """Read-only check that a fill landed. The input already happened, so never raise or retry here."""
         expected = " ".join(text.split())
+        # Text that followed focus into the field's own editor is read back from that editor.
+        field = "document.activeElement" if focus == "editor" else f"window.__jevFast?.nodes.get({node})"
         for attempt in range(4):
             if attempt:
                 time.sleep(0.05)
             try:
                 result = call("Runtime.evaluate", returnByValue=True, expression=(
-                    f"(() => {{ const e=window.__jevFast?.nodes.get({node}); "
+                    f"(() => {{ const e={field}; "
                     "return e ? ('value' in e ? String(e.value) : e.innerText) : null; })()"
                 ))
                 actual = result.get("result", {}).get("value")
@@ -331,18 +355,18 @@ def browser_operation(request):
                 if kind == "fill":
 
                     def require_focus():
-                        # A page's click or key handler can move focus; typing would then land in another field.
+                        """Where the text will go: the observed field ("self"), or the field's own editor
+                        ("editor"): a field the click just revealed, such as a combobox's search popup, that was
+                        not offered when the page was observed. Focus on any other offered field stops the fill,
+                        so a page handler cannot redirect the text into a different field (upstream #80)."""
                         try:
-                            focused = evaluate(
-                                "(node => { const e=window.__jevFast?.nodes.get(node);"
-                                " return !!(e?.isConnected && e.contains(document.activeElement) &&"
-                                " !e.matches(':disabled') && !e.readOnly); })(" + str(action["node"]) + ")"
-                            )
+                            focused = evaluate(FOCUS_TARGET + "(" + str(action["node"]) + ")")
                         except StalePage:
-                            focused = False
-                        if not focused:
-                            # The click already ran, so this is not a stale decision to retry (upstream #80).
+                            focused = None
+                        if focused not in {"self", "editor"}:
+                            # The click already ran, so this is not a stale decision to retry.
                             raise RuntimeError("The text field lost focus before typing; inspect before retrying.")
+                        return focused
 
                     require_focus()
                     call(
@@ -360,9 +384,9 @@ def browser_operation(request):
                         code="KeyA",
                         modifiers=4 if sys.platform == "darwin" else 2,
                     )
-                    require_focus()  # key handlers can redirect focus during Select All as well
+                    focus = require_focus()  # key handlers can redirect focus during Select All as well
                     call("Input.insertText", text=request["text"])
-                    return {"executed": action["id"], "typed": read_back(action["node"], request["text"])}
+                    return {"executed": action["id"], "typed": read_back(action["node"], request["text"], focus)}
         return {"executed": action["id"]}
 
     info = evaluate(READ_STATE)

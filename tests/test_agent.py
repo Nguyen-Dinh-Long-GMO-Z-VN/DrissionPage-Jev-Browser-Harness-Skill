@@ -343,7 +343,7 @@ def _fill_request(actual):
         if method == "Runtime.evaluate" and "action.node" in params["expression"]:
             return {"result": {"value": {"x": 1, "y": 1}}}
         if method == "Runtime.evaluate" and "activeElement" in params["expression"]:
-            return {"result": {"value": True}}
+            return {"result": {"value": "self"}}
         if method == "Runtime.evaluate":
             if isinstance(actual, Exception):
                 raise actual
@@ -694,6 +694,8 @@ def segmented_cdp(itype, assigned):
             return {}
         if "action.node" in params["expression"]:
             return {"result": {"value": {"x": 5, "y": 6, "itype": itype}}}
+        if "cache.offered" in params["expression"]:
+            return {"result": {"value": "self"}}
         return {"result": {"value": assigned}}
 
     return Mock(side_effect=respond)
@@ -751,7 +753,7 @@ def test_fill_stops_when_focus_moves_before_typing(lost):
             return {"result": {"value": {"x": 1, "y": 1, "itype": "text"}}}
         if method == "Runtime.evaluate" and "activeElement" in params["expression"]:
             checks.append(1)
-            return {"result": {"value": len(checks) != lost}}
+            return {"result": {"value": None if len(checks) == lost else "self"}}
         if method == "Input.insertText":
             raise AssertionError("typed without focus")
         return {}

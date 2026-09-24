@@ -2165,5 +2165,1098 @@
    ],
    "history": []
   }
- ]
+ ],
+ "upstream_ports": {
+  "date": "2026-09-24",
+  "note": "Live runs while porting upstream PRs #131 #113 #111 #137 #99 #124 #116 #80. 'code' names the state each run measured; each failure before 'final' led to a fix.",
+  "runs": [
+   {
+    "arm": "final",
+    "task": "wiki",
+    "status": "predicted",
+    "verified": false,
+    "detail": "https://en.wikipedia.org/wiki/Main_Page",
+    "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 14.358450413s.; no action executed.",
+    "elapsed_ms": 0,
+    "decisions": 1,
+    "actions": 0,
+    "waits": 0,
+    "decision_ms": 498,
+    "text_calls": 0,
+    "text_prefetches": 0,
+    "text_ms": 0,
+    "input_tokens": 6931,
+    "cdp_calls": 9,
+    "reason": null,
+    "ops": [
+     [
+      "TYPE_TEXT",
+      "2",
+      762
+     ]
+    ],
+    "history": [],
+    "code": "d81fc9c",
+    "quota": true,
+    "text_model": "gemini-2.5-flash-lite"
+   },
+   {
+    "arm": "final",
+    "task": "wiki",
+    "status": "done",
+    "verified": true,
+    "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+    "error": null,
+    "elapsed_ms": 4503,
+    "decisions": 3,
+    "actions": 2,
+    "waits": 0,
+    "decision_ms": 1504,
+    "text_calls": 1,
+    "text_prefetches": 0,
+    "text_ms": 1092,
+    "input_tokens": 22134,
+    "cdp_calls": 31,
+    "reason": null,
+    "ops": [
+     [
+      "TYPE_TEXT",
+      "2",
+      678
+     ],
+     [
+      "CLICK",
+      "3",
+      2786
+     ],
+     [
+      "DONE",
+      null,
+      4460
+     ]
+    ],
+    "history": [
+     [
+      "Search Wikipedia",
+      1831,
+      true
+     ],
+     [
+      "Gödel's incompleteness theorems   Limitative results in mathematical logic",
+      2807,
+      true
+     ]
+    ],
+    "code": "d81fc9c",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "hotel",
+    "status": "done",
+    "verified": true,
+    "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel#casa-flora",
+    "error": null,
+    "elapsed_ms": 3945,
+    "decisions": 6,
+    "actions": 5,
+    "waits": 0,
+    "decision_ms": 2220,
+    "text_calls": 1,
+    "text_prefetches": 0,
+    "text_ms": 1042,
+    "input_tokens": 16778,
+    "cdp_calls": 50,
+    "reason": null,
+    "ops": [
+     [
+      "TYPE_TEXT",
+      "4",
+      749
+     ],
+     [
+      "CLICK",
+      "5",
+      2243
+     ],
+     [
+      "SELECT",
+      "6:1",
+      2759
+     ],
+     [
+      "CLICK",
+      "7",
+      3166
+     ],
+     [
+      "CLICK",
+      "8",
+      3563
+     ],
+     [
+      "DONE",
+      null,
+      3942
+     ]
+    ],
+    "history": [
+     [
+      "Destination",
+      1814,
+      true
+     ],
+     [
+      "Find stays",
+      2253,
+      true
+     ],
+     [
+      "Stay category → Design",
+      2762,
+      true
+     ],
+     [
+      "Free cancellation",
+      3174,
+      true
+     ],
+     [
+      "View Casa Flora",
+      3577,
+      true
+     ]
+    ],
+    "code": "d81fc9c",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "flights",
+    "status": "blocked",
+    "verified": false,
+    "detail": {
+     "search_page": false,
+     "one_way": false,
+     "origin": false,
+     "destination": false,
+     "date": false,
+     "year": false,
+     "results": false
+    },
+    "error": "RuntimeError: The text field lost focus before typing; inspect before retrying.",
+    "elapsed_ms": 3242,
+    "decisions": 3,
+    "actions": 3,
+    "waits": 0,
+    "decision_ms": 930,
+    "text_calls": 1,
+    "text_prefetches": 0,
+    "text_ms": 1155,
+    "input_tokens": 9426,
+    "cdp_calls": 27,
+    "reason": "Where from?: outcome unknown after a browser error; inspect the page first.",
+    "ops": [
+     [
+      "CLICK",
+      "10",
+      491
+     ],
+     [
+      "CLICK",
+      "2",
+      1220
+     ],
+     [
+      "TYPE_TEXT",
+      "13",
+      2008
+     ]
+    ],
+    "history": [
+     [
+      "Change ticket type. Round trip",
+      519,
+      true
+     ],
+     [
+      "One way",
+      1258,
+      true
+     ],
+     [
+      "Where from?",
+      3242,
+      null
+     ]
+    ],
+    "code": "d81fc9c (focus check rejected a combobox's own search popup)",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "flights",
+    "status": "predicted",
+    "verified": false,
+    "detail": {
+     "search_page": true,
+     "one_way": true,
+     "origin": true,
+     "destination": true,
+     "date": true,
+     "year": true,
+     "results": false
+    },
+    "error": "_IPCResponseTimeout: Runtime.evaluate timed out after 5s waiting for the daemon",
+    "elapsed_ms": 16255,
+    "decisions": 14,
+    "actions": 11,
+    "waits": 1,
+    "decision_ms": 4366,
+    "text_calls": 2,
+    "text_prefetches": 0,
+    "text_ms": 2778,
+    "input_tokens": 62926,
+    "cdp_calls": 91,
+    "reason": null,
+    "ops": [
+     [
+      "CLICK",
+      "10",
+      428
+     ],
+     [
+      "CLICK",
+      "2",
+      1158
+     ],
+     [
+      "TYPE_TEXT",
+      "13",
+      1884
+     ],
+     [
+      "CLICK",
+      "1",
+      4026
+     ],
+     [
+      "CLICK",
+      "3",
+      4303
+     ],
+     [
+      "TYPE_TEXT",
+      "14",
+      4899
+     ],
+     [
+      "CLICK",
+      "3",
+      6607
+     ],
+     [
+      "CLICK",
+      "16",
+      7277
+     ],
+     [
+      "CLICK",
+      "29",
+      8188
+     ],
+     [
+      "CLICK",
+      "29",
+      8551
+     ],
+     [
+      "CLICK",
+      "29",
+      8895
+     ],
+     [
+      "CLICK",
+      "43",
+      9608
+     ],
+     [
+      "CLICK",
+      "17",
+      10302
+     ],
+     [
+      "WAIT",
+      null,
+      11237
+     ]
+    ],
+    "history": [
+     [
+      "Change ticket type. Round trip",
+      453,
+      true
+     ],
+     [
+      "One way",
+      1202,
+      true
+     ],
+     [
+      "Where from?",
+      3572,
+      true
+     ],
+     [
+      "Zürich, Switzerland",
+      4374,
+      true
+     ],
+     [
+      "Where to? ",
+      6167,
+      true
+     ],
+     [
+      "London, United Kingdom",
+      6650,
+      true
+     ],
+     [
+      "Open Departure",
+      7339,
+      true
+     ],
+     [
+      "Tuesday, October 20, 2026 , 1409777 Vietnamese dong, Cheapest price",
+      8952,
+      true
+     ],
+     [
+      "Done. Search for one-way flights, departing on October 20, 2026",
+      9634,
+      true
+     ],
+     [
+      "Search",
+      10340,
+      true
+     ],
+     [
+      "Wait for the page to update",
+      11250,
+      null
+     ]
+    ],
+    "code": "popup fix (settle call hit the harness 5 s IPC timeout)",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "flights",
+    "status": "done",
+    "verified": false,
+    "detail": {
+     "search_page": true,
+     "one_way": true,
+     "origin": true,
+     "destination": true,
+     "date": true,
+     "year": true,
+     "results": false
+    },
+    "error": null,
+    "elapsed_ms": 18425,
+    "decisions": 14,
+    "actions": 10,
+    "waits": 0,
+    "decision_ms": 10747,
+    "text_calls": 2,
+    "text_prefetches": 0,
+    "text_ms": 3118,
+    "input_tokens": 68221,
+    "cdp_calls": 90,
+    "reason": null,
+    "ops": [
+     [
+      "CLICK",
+      "10",
+      430
+     ],
+     [
+      "CLICK",
+      "2",
+      1136
+     ],
+     [
+      "TYPE_TEXT",
+      "13",
+      7116
+     ],
+     [
+      "CLICK",
+      "3",
+      9553
+     ],
+     [
+      "TYPE_TEXT",
+      "14",
+      10311
+     ],
+     [
+      "CLICK",
+      "3",
+      12202
+     ],
+     [
+      "CLICK",
+      "16",
+      13093
+     ],
+     [
+      "CLICK",
+      "29",
+      13932
+     ],
+     [
+      "CLICK",
+      "29",
+      14478
+     ],
+     [
+      "CLICK",
+      "29",
+      15041
+     ],
+     [
+      "CLICK",
+      "43",
+      15703
+     ],
+     [
+      "CLICK",
+      "17",
+      16392
+     ],
+     [
+      "WAIT",
+      null,
+      17341
+     ],
+     [
+      "DONE",
+      null,
+      18367
+     ]
+    ],
+    "history": [
+     [
+      "Change ticket type. Round trip",
+      457,
+      true
+     ],
+     [
+      "One way",
+      1175,
+      true
+     ],
+     [
+      "Where from?",
+      8943,
+      true
+     ],
+     [
+      "Zürich, Switzerland",
+      9592,
+      true
+     ],
+     [
+      "Where to? ",
+      11777,
+      true
+     ],
+     [
+      "London, United Kingdom",
+      12239,
+      true
+     ],
+     [
+      "Open Departure",
+      13156,
+      true
+     ],
+     [
+      "Tuesday, October 20, 2026 , 1409777 Vietnamese dong, Cheapest price",
+      15108,
+      true
+     ],
+     [
+      "Done. Search for one-way flights, departing on October 20, 2026",
+      15734,
+      true
+     ],
+     [
+      "Search",
+      16438,
+      true
+     ]
+    ],
+    "code": "IPC fix (result rows hidden by the hit test)",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "flights",
+    "status": "done",
+    "verified": false,
+    "detail": {
+     "search_page": true,
+     "one_way": true,
+     "origin": true,
+     "destination": true,
+     "date": true,
+     "year": true,
+     "results": false,
+     "_flights": [],
+     "_covered": 105
+    },
+    "error": null,
+    "elapsed_ms": 10563,
+    "decisions": 14,
+    "actions": 10,
+    "waits": 0,
+    "decision_ms": 4421,
+    "text_calls": 2,
+    "text_prefetches": 0,
+    "text_ms": 1813,
+    "input_tokens": 68220,
+    "cdp_calls": 91,
+    "reason": null,
+    "ops": [
+     [
+      "CLICK",
+      "10",
+      438
+     ],
+     [
+      "CLICK",
+      "2",
+      1108
+     ],
+     [
+      "TYPE_TEXT",
+      "13",
+      1833
+     ],
+     [
+      "CLICK",
+      "3",
+      3351
+     ],
+     [
+      "TYPE_TEXT",
+      "14",
+      3875
+     ],
+     [
+      "CLICK",
+      "3",
+      5273
+     ],
+     [
+      "CLICK",
+      "16",
+      6044
+     ],
+     [
+      "CLICK",
+      "29",
+      6908
+     ],
+     [
+      "CLICK",
+      "29",
+      7241
+     ],
+     [
+      "CLICK",
+      "29",
+      7578
+     ],
+     [
+      "CLICK",
+      "43",
+      8034
+     ],
+     [
+      "CLICK",
+      "17",
+      8728
+     ],
+     [
+      "WAIT",
+      null,
+      9679
+     ],
+     [
+      "DONE",
+      null,
+      10520
+     ]
+    ],
+    "history": [
+     [
+      "Change ticket type. Round trip",
+      467,
+      true
+     ],
+     [
+      "One way",
+      1144,
+      true
+     ],
+     [
+      "Where from?",
+      2875,
+      true
+     ],
+     [
+      "Zürich, Switzerland",
+      3390,
+      true
+     ],
+     [
+      "Where to? ",
+      4821,
+      true
+     ],
+     [
+      "London, United Kingdom",
+      5312,
+      true
+     ],
+     [
+      "Open Departure",
+      6108,
+      true
+     ],
+     [
+      "Tuesday, October 20, 2026 , 1409777 Vietnamese dong, Cheapest price",
+      7633,
+      true
+     ],
+     [
+      "Done. Search for one-way flights, departing on October 20, 2026",
+      8059,
+      true
+     ],
+     [
+      "Search",
+      8767,
+      true
+     ]
+    ],
+    "code": "IPC fix (result rows hidden by the hit test)",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "flights",
+    "status": "done",
+    "verified": true,
+    "detail": {
+     "search_page": true,
+     "one_way": true,
+     "origin": true,
+     "destination": true,
+     "date": true,
+     "year": true,
+     "results": true
+    },
+    "error": null,
+    "elapsed_ms": 11748,
+    "decisions": 14,
+    "actions": 11,
+    "waits": 1,
+    "decision_ms": 4354,
+    "text_calls": 2,
+    "text_prefetches": 0,
+    "text_ms": 2131,
+    "input_tokens": 69625,
+    "cdp_calls": 91,
+    "reason": null,
+    "ops": [
+     [
+      "CLICK",
+      "11",
+      412
+     ],
+     [
+      "CLICK",
+      "2",
+      1090
+     ],
+     [
+      "TYPE_TEXT",
+      "14",
+      1853
+     ],
+     [
+      "CLICK",
+      "3",
+      3359
+     ],
+     [
+      "TYPE_TEXT",
+      "15",
+      3958
+     ],
+     [
+      "CLICK",
+      "3",
+      5663
+     ],
+     [
+      "CLICK",
+      "17",
+      6387
+     ],
+     [
+      "CLICK",
+      "29",
+      7230
+     ],
+     [
+      "CLICK",
+      "29",
+      7561
+     ],
+     [
+      "CLICK",
+      "29",
+      7896
+     ],
+     [
+      "CLICK",
+      "43",
+      8387
+     ],
+     [
+      "CLICK",
+      "18",
+      9071
+     ],
+     [
+      "WAIT",
+      null,
+      10053
+     ],
+     [
+      "DONE",
+      null,
+      11711
+     ]
+    ],
+    "history": [
+     [
+      "Change ticket type. Round trip",
+      437,
+      true
+     ],
+     [
+      "One way",
+      1126,
+      true
+     ],
+     [
+      "Where from?",
+      2897,
+      true
+     ],
+     [
+      "Zürich, Switzerland",
+      3393,
+      true
+     ],
+     [
+      "Where to? ",
+      5220,
+      true
+     ],
+     [
+      "London, United Kingdom",
+      5705,
+      true
+     ],
+     [
+      "Open Departure",
+      6447,
+      true
+     ],
+     [
+      "Tuesday, October 20, 2026 , 1409777 Vietnamese dong, Cheapest price",
+      7969,
+      true
+     ],
+     [
+      "Done. Search for one-way flights, departing on October 20, 2026",
+      8412,
+      true
+     ],
+     [
+      "Search",
+      9110,
+      true
+     ],
+     [
+      "Wait for the page to update",
+      10064,
+      true
+     ]
+    ],
+    "code": "final (recent_actions still dropped None keys; restored afterwards)",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "wiki",
+    "status": "done",
+    "verified": true,
+    "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+    "error": null,
+    "elapsed_ms": 4502,
+    "decisions": 3,
+    "actions": 2,
+    "waits": 0,
+    "decision_ms": 1607,
+    "text_calls": 1,
+    "text_prefetches": 0,
+    "text_ms": 975,
+    "input_tokens": 22134,
+    "cdp_calls": 33,
+    "reason": null,
+    "ops": [
+     [
+      "TYPE_TEXT",
+      "2",
+      818
+     ],
+     [
+      "CLICK",
+      "3",
+      2690
+     ],
+     [
+      "DONE",
+      null,
+      4464
+     ]
+    ],
+    "history": [
+     [
+      "Search Wikipedia",
+      1846,
+      true
+     ],
+     [
+      "Gödel's incompleteness theorems   Limitative results in mathematical logic",
+      2709,
+      true
+     ]
+    ],
+    "code": "final (recent_actions still dropped None keys; restored afterwards)",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "hotel",
+    "status": "done",
+    "verified": false,
+    "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel#casa-flora",
+    "error": null,
+    "elapsed_ms": 3130,
+    "decisions": 5,
+    "actions": 4,
+    "waits": 0,
+    "decision_ms": 1467,
+    "text_calls": 1,
+    "text_prefetches": 0,
+    "text_ms": 1087,
+    "input_tokens": 13906,
+    "cdp_calls": 43,
+    "reason": null,
+    "ops": [
+     [
+      "TYPE_TEXT",
+      "4",
+      559
+     ],
+     [
+      "SELECT",
+      "6:1",
+      2074
+     ],
+     [
+      "CLICK",
+      "7",
+      2516
+     ],
+     [
+      "CLICK",
+      "8",
+      2829
+     ],
+     [
+      "DONE",
+      null,
+      3127
+     ]
+    ],
+    "history": [
+     [
+      "Destination",
+      1672,
+      true
+     ],
+     [
+      "Stay category → Design",
+      2078,
+      true
+     ],
+     [
+      "Free cancellation",
+      2525,
+      true
+     ],
+     [
+      "View Casa Flora",
+      2842,
+      true
+     ]
+    ],
+    "code": "final (recent_actions still dropped None keys; restored afterwards)",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "hotel",
+    "status": "predicted",
+    "verified": false,
+    "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel",
+    "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... ead to: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash Please retry in 23.383409165s.; no action executed.",
+    "elapsed_ms": 0,
+    "decisions": 1,
+    "actions": 0,
+    "waits": 0,
+    "decision_ms": 536,
+    "text_calls": 0,
+    "text_prefetches": 0,
+    "text_ms": 0,
+    "input_tokens": 3087,
+    "cdp_calls": 8,
+    "reason": null,
+    "ops": [
+     [
+      "TYPE_TEXT",
+      "4",
+      657
+     ]
+    ],
+    "history": [],
+    "code": "final (recent_actions still dropped None keys; restored afterwards)",
+    "quota": true,
+    "text_model": "gemini-2.5-flash"
+   },
+   {
+    "arm": "final",
+    "task": "hotel",
+    "status": "done",
+    "verified": true,
+    "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel#casa-flora",
+    "error": null,
+    "elapsed_ms": 3472,
+    "decisions": 6,
+    "actions": 5,
+    "waits": 0,
+    "decision_ms": 1846,
+    "text_calls": 1,
+    "text_prefetches": 0,
+    "text_ms": 988,
+    "input_tokens": 16778,
+    "cdp_calls": 49,
+    "reason": null,
+    "ops": [
+     [
+      "TYPE_TEXT",
+      "4",
+      604
+     ],
+     [
+      "CLICK",
+      "5",
+      2056
+     ],
+     [
+      "SELECT",
+      "6:1",
+      2493
+     ],
+     [
+      "CLICK",
+      "7",
+      2819
+     ],
+     [
+      "CLICK",
+      "8",
+      3149
+     ],
+     [
+      "DONE",
+      null,
+      3469
+     ]
+    ],
+    "history": [
+     [
+      "Destination",
+      1613,
+      true
+     ],
+     [
+      "Find stays",
+      2065,
+      true
+     ],
+     [
+      "Stay category → Design",
+      2497,
+      true
+     ],
+     [
+      "Free cancellation",
+      2827,
+      true
+     ],
+     [
+      "View Casa Flora",
+      3163,
+      true
+     ]
+    ],
+    "code": "final (recent_actions still dropped None keys; restored afterwards)",
+    "quota": false,
+    "text_model": "gemini-2.5-flash"
+   }
+  ]
+ }
 }

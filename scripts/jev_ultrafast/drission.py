@@ -78,7 +78,9 @@ class DrissionBrowser(Browser):
     def from_tab(cls, tab):
         return cls(tab)
 
-    def call(self, method, **params):
+    def call(self, method, _timeout=None, **params):
+        if _timeout:
+            params["_timeout"] = _timeout  # DrissionPage's per-call response timeout
         try:
             return self.tab.run_cdp(method, **params)
         except Exception as error:
