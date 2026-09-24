@@ -1,5 +1,3 @@
-<img src="docs/banner.svg" alt="Jev Ultrafast · Browser Use × TypeSafe" width="100%" />
-
 # Jev Ultrafast ⚡ browser-harness skill
 
 > Based on [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) (MIT, © Browser Use). This repository reorganizes it as a self-contained agent skill and adds an optional DrissionPage backend. The original license is kept in [LICENSE](LICENSE).
