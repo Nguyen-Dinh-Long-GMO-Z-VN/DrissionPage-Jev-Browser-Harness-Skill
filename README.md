@@ -1,4 +1,4 @@
-# Jev Ultrafast ⚡ browser-harness skill
+# Jev Ultrafast ⚡ browser-harness skill ⚡ DrissionPage
 
 > Based on [browser-use/jev-ultrafast](https://github.com/browser-use/jev-ultrafast) (MIT, © Browser Use). This repository reorganizes it as a self-contained agent skill and adds an optional DrissionPage backend. The original license is kept in [LICENSE](LICENSE).
 
@@ -21,8 +21,8 @@
 ## Quick start
 
 ```bash
-git clone https://github.com/Nguyen-Dinh-Long-GMO-Z-VN/DrissionPageJev-Browser-Harness-Skill.git
-cd DrissionPageJev-Browser-Harness-Skill
+git clone https://github.com/Nguyen-Dinh-Long-GMO-Z-VN/DrissionPage-Jev-Browser-Harness-Skill.git
+cd DrissionPage-Jev-Browser-Harness-Skill
 uv sync
 cp .env.example .env
 # Add TYPESAFE_API_KEY and TEXT_MODEL_API_KEY.
