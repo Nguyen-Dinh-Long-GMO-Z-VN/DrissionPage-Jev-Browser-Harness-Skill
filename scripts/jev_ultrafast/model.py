@@ -14,6 +14,8 @@ CLIENT = httpx.Client(http2=True, timeout=25)
 TYPESAFE_URL = "https://api.typesafe.ai/v1/systemone"
 DEFAULT_TEXT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_TEXT_MODEL = "inception/mercury-2.5"
+# Observed control states the model sees on elements and target criteria.
+STATES = ("checked", "selected", "expanded", "pressed")
 
 
 class MissingValue(ValueError):
@@ -106,7 +108,7 @@ def action_space(actions):
         if node not in indices:
             index = str(len(elements) + 1)
             indices[node] = index
-            element = {k: action[k] for k in ("role", "value", "checked", "selected", "expanded") if k in action}
+            element = {k: action[k] for k in ("role", "value", *STATES) if k in action}
             element.update(index=index, label=action["label"].split(" → ")[0], operations=[])
             if kind == "select":
                 element["value"] = action.get("current_value", "")
@@ -146,7 +148,7 @@ def choose(state, goal, history):
                 index: {
                     "element": f"[{index}] {a['label']}",
                     "current_value": a.get("current_value", a.get("value", "")),
-                    **{k: a[k] for k in ("role", "checked", "selected", "expanded") if k in a},
+                    **{k: a[k] for k in ("role", *STATES) if k in a},
                 }
                 for index, a in candidates.items()
             },

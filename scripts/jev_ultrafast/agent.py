@@ -56,6 +56,19 @@ def summarize(agent):
     }
 
 
+STALLED = "No progress after three actions; inspect the page before continuing."
+
+
+def stalled(history):
+    """The last three actions show no proven progress.
+
+    Only an explicit page_changed=True counts. An unobserved outcome (None, after a failed post-action
+    observation) must not reset the check, or a stuck run spends its whole model-call budget.
+    """
+    recent = history[-3:]
+    return len(recent) == 3 and all(h.get("page_changed") is not True and h["kind"] != "wait" for h in recent)
+
+
 def likely_text_node(decision, page):
     """The node the type_text_target head would fill. It only picks what to prefetch; it never executes."""
     answer = (decision.get("raw_answers") or {}).get("type_text_target")
@@ -154,6 +167,10 @@ class Agent:
             self._act({"fingerprint": state["page"]["fingerprint"]})
         except StalePage:
             state["decision"] = None
+            # Decide before recovering: a failed recovery observation must not revive a stalled run.
+            if stalled(state["history"]):
+                state["status"], state["reason"] = "blocked", STALLED
+                return
             state["status"] = "ready"
             self._observe()
             state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
@@ -269,7 +286,14 @@ class Agent:
         self.pending_text = None
         # Record execution before observing. A stale post-action observation must not erase the action.
         record(typed=(result or {}).get("typed"))
-        self._observe()
+        try:
+            self._observe()
+        except Exception:
+            # The action stays logged with page_changed=None, which still counts toward the no-progress stop.
+            state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
+            if stalled(state["history"]):
+                state["status"], state["reason"] = "blocked", STALLED
+            raise
         state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
         state["history"][-1].update(
             page_changed=state["page"]["fingerprint"] != page["fingerprint"],
@@ -280,12 +304,10 @@ class Agent:
             (self.record_dir / f"{state['elapsed_ms']:06d}.jpg").write_bytes(
                 base64.b64decode(state["page"]["screenshot"])
             )
-        repeated = state["history"][-3:]
-        state["status"] = (
-            "blocked"
-            if len(repeated) == 3 and all(h["page_changed"] is False and h["kind"] != "wait" for h in repeated)
-            else "ready"
-        )
+        if stalled(state["history"]):
+            state["status"], state["reason"] = "blocked", STALLED
+        else:
+            state["status"] = "ready"
 
     def run(self):
         while self.state["status"] not in {"done", "blocked"}:

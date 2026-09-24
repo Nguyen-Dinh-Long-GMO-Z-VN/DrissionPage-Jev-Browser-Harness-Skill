@@ -15,6 +15,26 @@
   const safe = e => !['password','file','hidden'].includes(e.type);
   const visible = e => !e.closest('[aria-hidden="true"],[inert]') &&
     e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
+  // A checkbox or radio styled away (opacity 0, 1 px, off-screen, under its label) is operated through its
+  // visible label; clicking a label activates its control.
+  cache.proxy = e => ['checkbox','radio'].includes(e.type) ? [...(e.labels||[])].find(visible) || null : null;
+  // A viewport point where a click lands on e itself: its centre, the centres of its fragments (a link
+  // wrapped over two lines has its box centre between them), then a small grid, plus `random` points.
+  // The snapshot offers only controls with such a point and the executor clicks one, so a control clipped
+  // by a scroll container or under a banner is not offered only to be refused at input time.
+  cache.hit = (e,random=0) => {
+    const r=e.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const pts=[[r.x+r.width/2,r.y+r.height/2]];
+    for (const q of e.getClientRects()) pts.push([q.x+q.width/2,q.y+q.height/2]);
+    for (const fx of [0.2,0.5,0.8]) for (const fy of [0.25,0.75]) pts.push([r.x+r.width*fx,r.y+r.height*fy]);
+    for (let i=0;i<random;i++) pts.push([r.x+Math.random()*r.width,r.y+Math.random()*r.height]);
+    for (const [x,y] of pts)
+      if (x>=0 && y>=0 && x<innerWidth && y<innerHeight && e.contains(document.elementFromPoint(x,y))) return {x,y};
+    return null;
+  };
+  cache.point = (e,random=0) => (visible(e) && cache.hit(e,random)) ||
+    (cache.proxy(e) && cache.hit(cache.proxy(e),random)) || null;
   const name = (e,seen=new Set()) => {
     if (!e || seen.has(e)) return '';
     seen.add(e);
@@ -51,24 +71,30 @@
     [...document.querySelectorAll('input,textarea,select')].filter(safe)
       .map(e=>[identity(e),e.value,e.checked,e.selectedIndex,e.disabled,e.readOnly])];
   cache.guard=e=>{
-    if (!e?.isConnected || !visible(e)) return null;
+    if (!e?.isConnected || !(visible(e) || cache.proxy(e))) return null;
     const scope=e.closest('form,dialog,[role="dialog"],article,li,tr,[role="row"]') || e.parentElement;
     return [identity(e),role(e),name(e),e.value??null,e.checked??null,e.selectedIndex??null,
       e.readOnly??null,e.matches(':disabled'),e.getAttribute('aria-disabled'),
       e.getAttribute('aria-expanded'),e.getAttribute('aria-checked'),e.getAttribute('aria-selected'),
-      e.getAttribute('href'),scope?.innerText?.slice(0,6000)||'',
+      e.getAttribute('aria-pressed'),e.getAttribute('href'),scope?.innerText?.slice(0,6000)||'',
       // Option meaning must not depend on the truncated scope text above.
       e.tagName==='SELECT' ? [...e.options].map(o=>[o.value,o.label,o.disabled||!!o.closest('optgroup[disabled]')]) : null];
   };
   const actions=[];
   for (const e of document.querySelectorAll(selector)) {
-    if (!safe(e) || !visible(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
-    const r=e.getBoundingClientRect(), x=r.x+r.width/2, y=r.y+r.height/2, rname=role(e);
-    if (!rname || r.width<=0 || r.height<=0 || x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;
+    if (!safe(e) || e.matches(':disabled') || e.closest('[aria-disabled="true"]')) continue;
+    const inView=q=>{const r=q.getBoundingClientRect(), x=r.x+r.width/2, y=r.y+r.height/2;
+      return r.width>0 && r.height>0 && x>=0 && y>=0 && x<innerWidth && y<innerHeight};
+    const box=visible(e) && inView(e) ? e : cache.proxy(e) && inView(cache.proxy(e)) ? cache.proxy(e) : null;
+    const rname=role(e);
+    if (!box || !rname) continue;
+    const r=box.getBoundingClientRect();
     if (rname==='gridcell' && e.querySelector('button,[role="button"]')) continue;
     const base={node:identity(e),role:rname,label:name(e)||rname,
       rect:{x:r.x,y:r.y,w:r.width,h:r.height}};
-    for (const key of ['checked','selected','expanded']) {
+    // Occlusion is geometry: dropped from the offer after the marker, which compares meaning only.
+    if (!cache.point(e)) base.covered=true;
+    for (const key of ['checked','selected','expanded','pressed']) {
       const value=e.getAttribute('aria-'+key);
       if (value!==null) base[key]=value;
     }
@@ -101,9 +127,10 @@
   const page_key=cache.pageKey(), guards={};
   for (const a of actions) if (!(a.node in guards)) guards[a.node]=cache.guard(cache.nodes.get(a.node));
   // Compare meaning and identity. Geometry is always resolved and hit-tested just before input.
-  const semantics=actions.map(({rect,...action})=>action);
+  const semantics=actions.map(({rect,covered,...action})=>action);
   const marker=[performance.timeOrigin,location.href,scrollX,scrollY,innerWidth,innerHeight,
     document.title,text,semantics,page_key[6]];
+  actions.splice(0,actions.length,...actions.filter(a=>!a.covered));
   const omitted_actions=Math.max(0,actions.length-250);
   actions.splice(250);
   actions.forEach((a,i)=>a.id='e'+(i+1));

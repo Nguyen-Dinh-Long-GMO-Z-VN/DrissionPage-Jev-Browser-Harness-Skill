@@ -238,21 +238,17 @@ def browser_operation(request):
                 raise ValueError("Invalid observed node")
             # Code-owned node IDs refer to actual observed elements, never model-generated selectors.
             target = evaluate("""(action => {
-              const e=window.__jevFast?.nodes.get(action.node);
-              if (!e?.isConnected || e.matches(':disabled') || e.closest('[aria-disabled="true"],[inert]') ||
-                  !e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})) return null;
+              const cache=window.__jevFast, e=cache?.nodes.get(action.node);
+              if (!e?.isConnected || e.matches(':disabled') || e.closest('[aria-disabled="true"],[inert]')) return null;
+              // A styled-away checkbox or radio is clicked through its visible label (see snapshot.js).
+              const shown=e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
+              const box=shown ? e : action.kind==='click' && cache.proxy(e);
+              if (!box) return null;
               if (action.kind==='fill' && (e.readOnly || e.getAttribute('aria-readonly')==='true')) return null;
-              if (e.scrollIntoViewIfNeeded) e.scrollIntoViewIfNeeded(true);
-              else e.scrollIntoView({block:'center',inline:'center'});
-              const r=e.getBoundingClientRect();
-              if (!r.width || !r.height) return null;
-              const pts=[[r.left+r.width/2, r.top+r.height/2]];
-              for (let i=0;i<12;i++) pts.push([r.left+Math.random()*r.width, r.top+Math.random()*r.height]);
-              let target=null;
-              for (const [x,y] of pts) {
-                if (x<0 || y<0 || x>=innerWidth || y>=innerHeight) continue;
-                if (e.contains(document.elementFromPoint(x,y))) { target={x,y}; break; }
-              }
+              if (box.scrollIntoViewIfNeeded) box.scrollIntoViewIfNeeded(true);
+              else box.scrollIntoView({block:'center',inline:'center'});
+              // The snapshot's own hit test, plus random interior points for a partly covered control.
+              const target=action.kind==='click' ? cache.point(e,12) : cache.hit(e,12);
               if (!target) return null;
               if (action.kind==='select') {
                 if (e.tagName!=='SELECT' || ![...e.options].some(o=>o.value===action.value &&

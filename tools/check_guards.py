@@ -210,6 +210,70 @@ def main():
         assert waited < 0.8, waited
         passed.append(f"WAIT on a page that stays still returns early ({waited * 1000:.0f} ms)")
 
+        browser.evaluate("document.body.innerHTML='<button type=button id=nonstop aria-pressed=false>Nonstop</button>'")
+        page = browser.observe(screenshot=False)
+        toggle = next(a for a in page["actions"] if a["label"] == "Nonstop")
+        assert toggle["pressed"] == "false", toggle
+        browser.evaluate("document.querySelector('#nonstop').setAttribute('aria-pressed','true')")
+        assert not browser.fresh(page, toggle)
+        assert browser.observe(screenshot=False)["fingerprint"] != page["fingerprint"]
+        passed.append("toggle button pressed state is observed and guarded")
+
+        # Offer only what the act guard can hit (upstream PR #137).
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <style>body{margin:0;font:20px/1.6 serif}
+          #side{position:absolute;left:0;top:0;width:220px;height:200px;overflow-y:auto}
+          #side a{display:block;height:60px}#main{position:absolute;left:0;top:210px;width:100%}
+          #banner{position:fixed;left:0;right:0;top:520px;height:120px;background:#333}
+          #under{position:absolute;left:40px;top:560px}#para{width:300px;margin:0 0 0 400px}</style>
+          <nav id="side"><a href="#a">Overview</a><a href="#b">Models</a><a href="#c">Limits</a>
+          <a href="#q" id="quotas" onclick="window.quotasHit=1;return false">Quotas</a>
+          <a href="#p" onclick="return false">Pricing</a></nav>
+          <div id="main"><p id="para">Python is a widely used, very popular
+          <a href="#gp" id="wrapped" onclick="window.wrappedHit=(window.wrappedHit||0)+1;return false">general-purpose
+          programming language</a> with a large standard library.</p></div>
+          <button id="under">Accept all</button><div id="banner"></div>"""))
+        assert browser.evaluate("(() => {const w=document.querySelector('#wrapped'), r=w.getBoundingClientRect();"
+                                "return w.getClientRects().length===2 && "
+                                "!w.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))})()")
+        page = browser.observe(screenshot=False)
+        labels = [a["label"] for a in page["actions"]]
+        assert "Pricing" not in labels and "Accept all" not in labels, labels
+        assert {"Overview", "Models"} <= set(labels), labels
+        passed.append("controls clipped by a scroll container or under a banner are not offered")
+        quotas = next(a for a in page["actions"] if a["label"] == "Quotas")  # 20 px of it is visible
+        browser.act(quotas, page)
+        assert browser.evaluate("window.quotasHit") == 1
+        page = browser.observe(screenshot=False)
+        passed.append("a partly clipped control is clicked on its visible part")
+        browser.evaluate("document.querySelector('#banner').style.top='200px'")
+        assert browser.fresh(page)
+        browser.evaluate("document.querySelector('#banner').style.top='520px'")
+        passed.append("covering a control does not invalidate the observation")
+        wrapped = next(a for a in page["actions"] if a["label"].startswith("general-purpose"))
+        browser.act(wrapped, page)
+        assert browser.evaluate("window.wrappedHit") == 1
+        passed.append("a link wrapped over two lines is clicked on a visible fragment")
+
+        # Styled-away checkboxes and radios are operated through their labels (upstream PR #113).
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <style>.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+          .pill{display:inline-block;padding:10px 20px;border:1px solid}</style>
+          <label class="pill"><input type="radio" name="size" class="sr" value="s">Small</label>
+          <input type="radio" name="size" id="large" value="l" style="opacity:0;position:absolute">
+          <label for="large" class="pill">Large</label>
+          <input type="checkbox" id="gift" style="position:absolute;left:-9999px">
+          <label for="gift" class="pill">Gift wrap</label>"""))
+        page = browser.observe(screenshot=False)
+        for label, check in [("Small", "input[value=s]"), ("Large", "#large"), ("Gift wrap", "#gift")]:
+            action = next(a for a in page["actions"] if a["label"] == label)
+            assert action["checked"] == "false", action
+            browser.act(action, page)
+            assert browser.evaluate(f"document.querySelector('{check}').checked"), label
+            page = browser.observe(screenshot=False)
+            assert next(a for a in page["actions"] if a["label"] == label)["checked"] == "true", label
+        passed.append("hidden radios and checkboxes (clipped, transparent, off-screen) are clicked via their labels")
+
         browser.call("Page.navigate", url="about:blank")
         assert not browser.fresh(page, field)
         passed.append("navigation invalidates the old document")
