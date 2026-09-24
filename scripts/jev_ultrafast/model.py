@@ -158,7 +158,9 @@ def choose(state, goal, history):
             "page": {k: state[k] for k in ("url", "title", "text")},
             "elements": elements,
             "recent_actions": [
-                {k: h.get(k) for k in ("action", "kind", "text", "page_changed")} for h in history[-10:]
+                # `typed: unverified` tells the model a field may not hold the text it was sent.
+                {k: h[k] for k in ("action", "kind", "text", "page_changed", "typed") if h.get(k) is not None}
+                for h in history[-10:]
             ],
         },
         "questions": questions,

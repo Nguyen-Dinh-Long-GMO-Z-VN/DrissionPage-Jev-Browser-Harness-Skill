@@ -371,3 +371,133 @@ def test_unverified_text_is_recorded_and_summarized(runner, monkeypatch):
     runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
     assert runner.state["history"][-1]["typed"] == "unverified"
     assert loop.summarize(runner)["unverified_text"] == ["Search"]
+
+
+@pytest.fixture
+def prefetching(runner, monkeypatch):
+    monkeypatch.setenv("TEXT_MODEL_API_KEY", "test")
+    monkeypatch.setenv("JEV_TEXT_PREFETCH", "1")
+    runner.state["decisions"] = [{"text_node": 10}]  # The previous decision's type_text_target.
+    return runner
+
+
+def test_likely_text_node_reads_the_unexecuted_text_head():
+    d = {"raw_answers": {"type_text_target": choice(["1"], "1")}}
+    assert loop.likely_text_node(d, page()) == 10
+    for answer in [None, {"choice": "999"}, {"choice": ["1"]}, "1"]:
+        assert loop.likely_text_node({"raw_answers": {"type_text_target": answer}}, page()) is None
+
+
+def test_prefetched_text_is_used_only_for_the_identical_helper_input(prefetching, monkeypatch):
+    runner = prefetching
+    helper = Mock(return_value=("book", {"model": "test", "latency_ms": 10}))
+    monkeypatch.setattr(loop, "field_text", helper)
+    runner._prefetch_text(runner.state["page"])
+    assert helper.call_count == 1
+    assert runner.state["text_prefetches"] == 1
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert helper.call_count == 1
+    assert runner.state["history"][-1]["text"] == "book"
+    assert runner.state["text_calls"][-1]["prefetched"] is True
+
+
+def test_prefetched_text_for_a_different_input_is_not_used(prefetching, monkeypatch):
+    runner = prefetching
+    helper = Mock(side_effect=[("stale", {"model": "test", "latency_ms": 10}),
+                               ("book", {"model": "test", "latency_ms": 10})])
+    monkeypatch.setattr(loop, "field_text", helper)
+    runner._prefetch_text(runner.state["page"])
+    for future in runner.prefetched.values():
+        assert future.result()[0] == "stale"
+    runner.state["page"]["text"] = "Different page context"
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert helper.call_count == 2
+    assert runner.state["history"][-1]["text"] == "book"
+
+
+def test_prefetched_missing_value_blocks_without_typing(prefetching, monkeypatch):
+    runner = prefetching
+    monkeypatch.setattr(loop, "field_text", Mock(side_effect=model.MissingValue("no value for 'Search'")))
+    runner._prefetch_text(runner.state["page"])
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["status"] == "blocked"
+    runner.state["browser"].act.assert_not_called()
+
+
+@pytest.mark.parametrize("change", ["default_off", "no_key", "no_prediction", "not_editable"])
+def test_text_prefetch_needs_opt_in_and_an_editable_prediction(prefetching, monkeypatch, change):
+    runner = prefetching
+    if change == "default_off":
+        monkeypatch.delenv("JEV_TEXT_PREFETCH")
+    elif change == "no_key":
+        monkeypatch.delenv("TEXT_MODEL_API_KEY")
+    elif change == "no_prediction":
+        runner.state["decisions"] = []
+    else:
+        runner.state["decisions"] = [{"text_node": 20}]  # The "Go" button.
+    helper = Mock()
+    monkeypatch.setattr(loop, "field_text", helper)
+    runner._prefetch_text(runner.state["page"])
+    assert runner.prefetched == {}
+    helper.assert_not_called()
+
+
+def test_a_just_observed_page_skips_the_freshness_read(runner, monkeypatch):
+    monkeypatch.setattr(loop, "choose", Mock(return_value=decision()))
+    runner.state["status"] = "ready"
+    runner._observe()
+    runner.command("predict")
+    runner.state["browser"].fresh.assert_not_called()
+    runner.observed_at -= 1
+    runner.command("predict")
+    runner.state["browser"].fresh.assert_called_once()
+
+
+def test_unverified_typing_is_shown_to_the_next_decision(monkeypatch):
+    sent = []
+
+    def post(_url, _key, body):
+        sent.append(body)
+        return {"model": "test", "answers": {"operation": choice(body["questions"]["operation"]["criteria"], "DONE")}}
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test")
+    monkeypatch.setattr(model, "post_json", post)
+    history = [{"action": "Search", "kind": "fill", "text": "book", "page_changed": False, "typed": "unverified"}]
+    model.choose(page(), "Find a book", history)
+    assert sent[0]["state"]["recent_actions"] == history
+
+
+def test_wait_settles_in_the_page_instead_of_sleeping(monkeypatch):
+    import jev_ultrafast.browser as browser
+
+    b = browser.Browser.__new__(browser.Browser)
+    b.session, b.after_input = "s", None
+    b.fresh = Mock(return_value=True)
+    monkeypatch.setattr(browser, "browser_operation", Mock(return_value={"executed": "wait"}))
+    monkeypatch.setattr(browser.time, "sleep", Mock(side_effect=AssertionError("slept")))
+    wait = {"id": "wait", "kind": "wait", "label": "Wait"}
+    b.act(wait, page())
+    assert b.after_input == wait
+    calls = []
+    b.call = lambda method, **params: calls.append(params) or {}
+    b.observe(screenshot=False)
+    assert calls[0]["expression"].startswith(browser.SETTLE_AFTER_INPUT)
+    assert calls[0]["awaitPromise"] is True
+
+
+def test_owned_tab_opens_in_its_own_window(monkeypatch):
+    import browser_harness.admin
+
+    import jev_ultrafast.browser as browser
+
+    calls = []
+
+    def cdp(method, **params):
+        calls.append((method, params))
+        return {"targetId": "t", "sessionId": "s", "result": {"value": "complete"}}
+
+    monkeypatch.setattr(browser_harness.admin, "ensure_daemon", lambda: None)
+    monkeypatch.setattr(browser, "cdp", cdp)
+    browser.Browser("https://example.test/")
+    # A background tab in the user's window may render no frames, leaving opening menus invisible.
+    assert calls[0] == ("Target.createTarget", {"url": "about:blank", "newWindow": True, "background": True})

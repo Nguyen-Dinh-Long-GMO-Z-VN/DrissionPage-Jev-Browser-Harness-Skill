@@ -14,6 +14,46 @@ from pathlib import Path
 READ_STATE = Path(__file__).with_name("snapshot.js").read_text()
 MARKER = f"(() => {{ const state={READ_STATE}; return state?.marker ?? null; }})()"
 
+# Read-only wait after input, so the next decision sees the page the input produced rather than a frame of
+# its transition (a decision on a moving page goes stale and costs a whole model call). Autocomplete fields
+# wait for visible options. Other input waits at least 32 ms, then until the DOM has been quiet for 50 ms and no
+# finite animation runs, capped at 400 ms. WAIT waits for the page to change and go quiet (at least 100 ms),
+# returns after 500 ms if nothing changes, and is capped at 1.5 s.
+SETTLE_AFTER_INPUT = """(action => new Promise(resolve => {
+  const cache=window.__jevFast, start=performance.now();
+  const field=cache?.nodes.get(action.node);
+  const autocomplete=action.kind==='fill' && field?.getAttribute('role')==='combobox';
+  const waiting=action.kind==='wait';
+  // Poll on timers, not requestAnimationFrame: a background tab can stop producing frames entirely.
+  let ticks=0, stopped=false;
+  const finish=()=>{stopped=true;resolve()};
+  setTimeout(finish,autocomplete ? 200 : waiting ? 1500 : 400);
+  const quiet=ms=>performance.now()-(cache?.changed ?? 0)>=ms;
+  // A pending animation (no start time) may never start in a background tab; only started, finite ones count.
+  const animating=()=>document.getAnimations().some(a=>a.playState==='running' && a.startTime!==null &&
+    a.effect?.getComputedTiming().endTime!==Infinity);
+  const suggestions=()=>{
+    const ids=(field?.getAttribute('aria-controls')||field?.getAttribute('aria-owns')||'')
+      .split(/\\s+/).filter(Boolean);
+    const roots=ids.length ? ids.map(id=>document.getElementById(id)).filter(Boolean) : [document];
+    return roots.flatMap(root=>[...root.querySelectorAll('[role="option"]')]).some(e=>{
+      const r=e.getBoundingClientRect();
+      return r.width && r.height && r.bottom>0 && r.top<innerHeight &&
+        e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
+    });
+  };
+  const ready=()=>{
+    if (stopped) return;
+    const settled=autocomplete ? suggestions() :
+      waiting ? !animating() && (cache?.changed>start ? performance.now()-start>=100 && quiet(100) :
+        performance.now()-start>=500) :
+      quiet(50) && !animating();
+    if (++ticks>=2 && settled) finish();
+    else setTimeout(ready,16);
+  };
+  setTimeout(ready,16);
+}))"""
+
 
 def cdp(method, **params):
     """Browser Harness CDP call, imported on first use so other backends do not need it."""
@@ -31,7 +71,10 @@ class Browser:
         from browser_harness.admin import ensure_daemon
 
         ensure_daemon()
-        self.target = cdp("Target.createTarget", url="about:blank", background=True)["targetId"]
+        # A separate, unfocused window. A background tab in the user's window gets no rendered frames on some
+        # platforms (Linux Chrome here): its CSS animations stay pending, so an opening menu keeps opacity 0 and
+        # never appears in a snapshot. Focus emulation does not change that; a window of its own does.
+        self.target = cdp("Target.createTarget", url="about:blank", newWindow=True, background=True)["targetId"]
         self.session = cdp("Target.attachToTarget", targetId=self.target, flatten=True)["sessionId"]
         self.call("Emulation.setDeviceMetricsOverride", width=1120, height=780, deviceScaleFactor=1, mobile=False)
         # Keep rAF/menus rendering in an owned background tab, without activating the user's Chrome tab.
@@ -71,27 +114,7 @@ class Browser:
             try:
                 self.call(
                     "Runtime.evaluate",
-                    expression="""(action => new Promise(resolve => {
-                      const field=window.__jevFast?.nodes.get(action.node);
-                      const autocomplete=action.kind==='fill' && field?.getAttribute('role')==='combobox';
-                      let frames=0, stopped=false;
-                      const finish=()=>{stopped=true;resolve()};
-                      setTimeout(finish,autocomplete ? 200 : 50);
-                      const ready=()=>{
-                        if (stopped) return;
-                        const ids=(field?.getAttribute('aria-controls')||field?.getAttribute('aria-owns')||'')
-                          .split(/\\s+/).filter(Boolean);
-                        const roots=ids.length ? ids.map(id=>document.getElementById(id)).filter(Boolean) : [document];
-                        const options=roots.flatMap(root=>[...root.querySelectorAll('[role="option"]')]);
-                        if (++frames>=2 && (!autocomplete || options.some(e=>{
-                          const r=e.getBoundingClientRect();
-                          return r.width && r.height && r.bottom>0 && r.top<innerHeight &&
-                            e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});
-                        }))) finish();
-                        else requestAnimationFrame(ready);
-                      };
-                      requestAnimationFrame(ready);
-                    }))(""" + json.dumps(action) + ")",
+                    expression=SETTLE_AFTER_INPUT + "(" + json.dumps(action) + ")",
                     awaitPromise=True,
                     returnByValue=True,
                 )
@@ -151,10 +174,9 @@ class Browser:
     def act(self, action, page, text=None):
         if not self.fresh(page, action):
             raise StalePage("Page changed since this decision. Observe again.")
-        if action["kind"] == "wait":
-            time.sleep(0.1)
         result = self._operate({"operation": "act", "session": self.session, "action": action, "text": text})
-        self.after_input = action if action["kind"] != "wait" else None
+        # The next observe() waits for the page to settle, including after WAIT.
+        self.after_input = action
         return result
 
     def _operate(self, request):

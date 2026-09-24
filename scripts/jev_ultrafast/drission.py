@@ -66,7 +66,8 @@ class DrissionBrowser(Browser):
     @classmethod
     def open(cls, browser, url):
         """Load `url` in a new background tab that this object owns."""
-        tab = browser.new_tab("about:blank", background=True)
+        # A window of its own renders frames; see Browser.__init__.
+        tab = browser.new_tab("about:blank", new_window=True, background=True)
         page = cls(tab, owned=True, metrics=True)
         page.call("Page.navigate", url=url)
         page._wait_ready()

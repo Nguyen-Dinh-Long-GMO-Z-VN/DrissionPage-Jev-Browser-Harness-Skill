@@ -1,0 +1,2169 @@
+{
+ "date": "2026-09-24",
+ "setup": "Linux, local Chrome through Browser Harness, TypeSafe jev-latest, text helper gemini-2.5-flash-lite (free tier) for every arm. Timing starts at the first decision; setup and the independent check are outside the clock.",
+ "arms": {
+  "baseline": "f085130 source (owned tab is a background tab in the user's window)",
+  "basewin": "f085130 source plus only the own-window change",
+  "settle_only": "this change without the own-window fix (batches 1-2)",
+  "candidate": "this change: own window, post-input settle, event-driven WAIT, no redundant freshness read"
+ },
+ "tasks": {
+  "flights": "Google Flights, one-way Zurich to London on 2026-10-20; checks route, one-way, date, year, and matching results",
+  "wiki": "Open Godel's incompleteness theorems from Wikipedia's main page; checks the exact article URL",
+  "hotel": "Local fixture: Lisbon, Design, Free cancellation, open Casa Flora; checks URL and applied filters"
+ },
+ "excluded": "Runs whose text helper returned HTTP 429 (free-tier quota) are kept here with quota=true and excluded from the README table.",
+ "runs": [
+  {
+   "batch": "run1",
+   "arm": "baseline",
+   "task": "wiki",
+   "status": "done",
+   "verified": true,
+   "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 4398,
+   "decisions": 3,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 1475,
+   "text_calls": 1,
+   "text_ms": 989,
+   "input_tokens": 19180,
+   "cdp_calls": 39,
+   "history": [
+    [
+     "Search Wikipedia",
+     1713
+    ],
+    [
+     "Search",
+     2448
+    ]
+   ]
+  },
+  {
+   "batch": "run1",
+   "arm": "settle_only",
+   "task": "wiki",
+   "status": "done",
+   "verified": true,
+   "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 8207,
+   "decisions": 4,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 2045,
+   "text_calls": 1,
+   "text_ms": 4300,
+   "input_tokens": 25920,
+   "cdp_calls": 34,
+   "history": [
+    [
+     "Search Wikipedia",
+     5054
+    ],
+    [
+     "Search",
+     5856
+    ]
+   ]
+  },
+  {
+   "batch": "run1",
+   "arm": "baseline",
+   "task": "hotel",
+   "status": "done",
+   "verified": true,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel#casa-flora",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 4084,
+   "decisions": 6,
+   "actions": 5,
+   "waits": 0,
+   "decision_ms": 2015,
+   "text_calls": 1,
+   "text_ms": 1477,
+   "input_tokens": 16666,
+   "cdp_calls": 51,
+   "history": [
+    [
+     "Destination",
+     2216
+    ],
+    [
+     "Find stays",
+     2697
+    ],
+    [
+     "Stay category → Design",
+     3029
+    ],
+    [
+     "Free cancellation",
+     3381
+    ],
+    [
+     "View Casa Flora",
+     3734
+    ]
+   ]
+  },
+  {
+   "batch": "run1",
+   "arm": "settle_only",
+   "task": "hotel",
+   "status": "done",
+   "verified": true,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel#casa-flora",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 3755,
+   "decisions": 6,
+   "actions": 5,
+   "waits": 0,
+   "decision_ms": 1896,
+   "text_calls": 1,
+   "text_ms": 1125,
+   "input_tokens": 16646,
+   "cdp_calls": 50,
+   "history": [
+    [
+     "Destination",
+     1836
+    ],
+    [
+     "Find stays",
+     2285
+    ],
+    [
+     "Stay category → Design",
+     2733
+    ],
+    [
+     "Free cancellation",
+     3102
+    ],
+    [
+     "View Casa Flora",
+     3449
+    ]
+   ]
+  },
+  {
+   "batch": "run1",
+   "arm": "baseline",
+   "task": "flights",
+   "status": "done",
+   "verified": true,
+   "detail": {
+    "search_page": true,
+    "one_way": true,
+    "origin": true,
+    "destination": true,
+    "date": true,
+    "year": true,
+    "results": true
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 15170,
+   "decisions": 21,
+   "actions": 11,
+   "waits": 1,
+   "decision_ms": 10362,
+   "text_calls": 2,
+   "text_ms": 2552,
+   "input_tokens": 105111,
+   "cdp_calls": 126,
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     492
+    ],
+    [
+     "One way",
+     1646
+    ],
+    [
+     "Where from?",
+     3748
+    ],
+    [
+     "Zürich, Switzerland",
+     4175
+    ],
+    [
+     "Where to? ",
+     6718
+    ],
+    [
+     "London, United Kingdom",
+     7694
+    ],
+    [
+     "Open Departure",
+     8560
+    ],
+    [
+     "Tuesday, October 20, 2026 , 1408461 Vietnamese dong, Cheapest price",
+     10906
+    ],
+    [
+     "Done. Search for one-way flights, departing on October 20, 2026",
+     11415
+    ],
+    [
+     "Search",
+     12288
+    ],
+    [
+     "Wait for the page to update",
+     13244
+    ]
+   ]
+  },
+  {
+   "batch": "run1",
+   "arm": "settle_only",
+   "task": "flights",
+   "status": "blocked",
+   "verified": false,
+   "detail": {
+    "search_page": false,
+    "one_way": false,
+    "origin": false,
+    "destination": false,
+    "date": false,
+    "year": false,
+    "results": false
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 1403,
+   "decisions": 3,
+   "actions": 1,
+   "waits": 0,
+   "decision_ms": 950,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 8063,
+   "cdp_calls": 22,
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     444
+    ]
+   ]
+  },
+  {
+   "batch": "run1",
+   "arm": "settle_only",
+   "task": "wiki",
+   "status": "done",
+   "verified": true,
+   "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 4304,
+   "decisions": 3,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 1354,
+   "text_calls": 1,
+   "text_ms": 1213,
+   "input_tokens": 19190,
+   "cdp_calls": 37,
+   "history": [
+    [
+     "Search Wikipedia",
+     1922
+    ],
+    [
+     "Search",
+     2616
+    ]
+   ]
+  },
+  {
+   "batch": "run2",
+   "arm": "baseline",
+   "task": "wiki",
+   "status": "done",
+   "verified": true,
+   "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 21038,
+   "decisions": 3,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 2225,
+   "text_calls": 1,
+   "text_ms": 17096,
+   "input_tokens": 19180,
+   "cdp_calls": 37,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     954
+    ],
+    [
+     "CLICK",
+     "3",
+     19176
+    ],
+    [
+     "DONE",
+     null,
+     21010
+    ]
+   ],
+   "history": [
+    [
+     "Search Wikipedia",
+     18088,
+     true
+    ],
+    [
+     "Search",
+     19184,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run2",
+   "arm": "settle_only",
+   "task": "wiki",
+   "status": "done",
+   "verified": true,
+   "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 4517,
+   "decisions": 3,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 1609,
+   "text_calls": 1,
+   "text_ms": 1216,
+   "input_tokens": 19190,
+   "cdp_calls": 37,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     773
+    ],
+    [
+     "CLICK",
+     "3",
+     2816
+    ],
+    [
+     "DONE",
+     null,
+     4488
+    ]
+   ],
+   "history": [
+    [
+     "Search Wikipedia",
+     2022,
+     true
+    ],
+    [
+     "Search",
+     2822,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run2",
+   "arm": "baseline",
+   "task": "hotel",
+   "status": "done",
+   "verified": true,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel#casa-flora",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 7782,
+   "decisions": 6,
+   "actions": 5,
+   "waits": 0,
+   "decision_ms": 5612,
+   "text_calls": 1,
+   "text_ms": 1715,
+   "input_tokens": 16666,
+   "cdp_calls": 47,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "4",
+     4067
+    ],
+    [
+     "CLICK",
+     "5",
+     6224
+    ],
+    [
+     "SELECT",
+     "6:1",
+     6630
+    ],
+    [
+     "CLICK",
+     "7",
+     7008
+    ],
+    [
+     "CLICK",
+     "8",
+     7383
+    ],
+    [
+     "DONE",
+     null,
+     7779
+    ]
+   ],
+   "history": [
+    [
+     "Destination",
+     5796,
+     true
+    ],
+    [
+     "Find stays",
+     6230,
+     true
+    ],
+    [
+     "Stay category → Design",
+     6633,
+     true
+    ],
+    [
+     "Free cancellation",
+     7012,
+     true
+    ],
+    [
+     "View Casa Flora",
+     7391,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run2",
+   "arm": "settle_only",
+   "task": "hotel",
+   "status": "done",
+   "verified": true,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel#casa-flora",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 4430,
+   "decisions": 6,
+   "actions": 5,
+   "waits": 0,
+   "decision_ms": 2738,
+   "text_calls": 1,
+   "text_ms": 1071,
+   "input_tokens": 16646,
+   "cdp_calls": 46,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "4",
+     1114
+    ],
+    [
+     "CLICK",
+     "5",
+     2706
+    ],
+    [
+     "SELECT",
+     "6:1",
+     3135
+    ],
+    [
+     "CLICK",
+     "7",
+     3567
+    ],
+    [
+     "CLICK",
+     "8",
+     3992
+    ],
+    [
+     "DONE",
+     null,
+     4428
+    ]
+   ],
+   "history": [
+    [
+     "Destination",
+     2199,
+     true
+    ],
+    [
+     "Find stays",
+     2713,
+     true
+    ],
+    [
+     "Stay category → Design",
+     3139,
+     true
+    ],
+    [
+     "Free cancellation",
+     3573,
+     true
+    ],
+    [
+     "View Casa Flora",
+     4000,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run2",
+   "arm": "baseline",
+   "task": "flights",
+   "status": "blocked",
+   "verified": false,
+   "detail": {
+    "search_page": false,
+    "one_way": false,
+    "origin": false,
+    "destination": false,
+    "date": false,
+    "year": false,
+    "results": false
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 1377,
+   "decisions": 3,
+   "actions": 1,
+   "waits": 0,
+   "decision_ms": 956,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 8075,
+   "cdp_calls": 23,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     540
+    ],
+    [
+     "CLICK",
+     "12",
+     1000
+    ],
+    [
+     "BLOCKED",
+     null,
+     1374
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     554,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run2",
+   "arm": "settle_only",
+   "task": "flights",
+   "status": "blocked",
+   "verified": false,
+   "detail": {
+    "search_page": false,
+    "one_way": false,
+    "origin": false,
+    "destination": false,
+    "date": false,
+    "year": false,
+    "results": false
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 1347,
+   "decisions": 3,
+   "actions": 1,
+   "waits": 0,
+   "decision_ms": 920,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 8063,
+   "cdp_calls": 21,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     437
+    ],
+    [
+     "CLICK",
+     "12",
+     944
+    ],
+    [
+     "BLOCKED",
+     null,
+     1344
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     453,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "baseline",
+   "task": "flights",
+   "status": "done",
+   "verified": true,
+   "detail": {
+    "search_page": true,
+    "one_way": true,
+    "origin": true,
+    "destination": true,
+    "date": true,
+    "year": true,
+    "results": true
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 12590,
+   "decisions": 20,
+   "actions": 11,
+   "waits": 1,
+   "decision_ms": 5840,
+   "text_calls": 2,
+   "text_ms": 3866,
+   "input_tokens": 99881,
+   "cdp_calls": 131,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     422
+    ],
+    [
+     "CLICK",
+     "2",
+     1098
+    ],
+    [
+     "BLOCKED",
+     null,
+     1388
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     1700
+    ],
+    [
+     "CLICK",
+     "3",
+     4923
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     5252
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     5560
+    ],
+    [
+     "CLICK",
+     "3",
+     7304
+    ],
+    [
+     "CLICK",
+     "18",
+     7639
+    ],
+    [
+     "CLICK",
+     "18",
+     7964
+    ],
+    [
+     "CLICK",
+     "29",
+     8534
+    ],
+    [
+     "CLICK",
+     "29",
+     8855
+    ],
+    [
+     "CLICK",
+     "48",
+     9225
+    ],
+    [
+     "CLICK",
+     "48",
+     9536
+    ],
+    [
+     "WAIT",
+     null,
+     9894
+    ],
+    [
+     "CLICK",
+     "19",
+     10191
+    ],
+    [
+     "WAIT",
+     null,
+     10648
+    ],
+    [
+     "WAIT",
+     null,
+     11056
+    ],
+    [
+     "WAIT",
+     null,
+     11438
+    ],
+    [
+     "DONE",
+     null,
+     12563
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     441,
+     true
+    ],
+    [
+     "One way",
+     1121,
+     true
+    ],
+    [
+     "Where from?",
+     4553,
+     true
+    ],
+    [
+     "Zürich, Switzerland",
+     4950,
+     true
+    ],
+    [
+     "Where to? ",
+     7014,
+     true
+    ],
+    [
+     "London, United Kingdom",
+     7327,
+     true
+    ],
+    [
+     "Open Departure",
+     8013,
+     true
+    ],
+    [
+     "Tuesday, October 20, 2026 ????",
+     8880,
+     true
+    ],
+    [
+     "Done. Search for one-way flights, departing on October 20, 2026",
+     9555,
+     false
+    ],
+    [
+     "Search",
+     10217,
+     true
+    ],
+    [
+     "Wait for the page to update",
+     11166,
+     false
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "basewin",
+   "task": "flights",
+   "status": "done",
+   "verified": true,
+   "detail": {
+    "search_page": true,
+    "one_way": true,
+    "origin": true,
+    "destination": true,
+    "date": true,
+    "year": true,
+    "results": true
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 10271,
+   "decisions": 17,
+   "actions": 11,
+   "waits": 1,
+   "decision_ms": 5715,
+   "text_calls": 2,
+   "text_ms": 1912,
+   "input_tokens": 81909,
+   "cdp_calls": 130,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     404
+    ],
+    [
+     "CLICK",
+     "2",
+     990
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     1781
+    ],
+    [
+     "CLICK",
+     "3",
+     3311
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     3719
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     4134
+    ],
+    [
+     "CLICK",
+     "3",
+     5687
+    ],
+    [
+     "CLICK",
+     "18",
+     6061
+    ],
+    [
+     "CLICK",
+     "18",
+     6428
+    ],
+    [
+     "CLICK",
+     "29",
+     6944
+    ],
+    [
+     "CLICK",
+     "48",
+     7365
+    ],
+    [
+     "WAIT",
+     null,
+     7756
+    ],
+    [
+     "CLICK",
+     "19",
+     8097
+    ],
+    [
+     "WAIT",
+     null,
+     8499
+    ],
+    [
+     "WAIT",
+     null,
+     8844
+    ],
+    [
+     "WAIT",
+     null,
+     9286
+    ],
+    [
+     "DONE",
+     null,
+     10251
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     421,
+     true
+    ],
+    [
+     "One way",
+     1015,
+     true
+    ],
+    [
+     "Where from?",
+     2942,
+     true
+    ],
+    [
+     "Zürich, Switzerland",
+     3338,
+     true
+    ],
+    [
+     "Where to? ",
+     5324,
+     true
+    ],
+    [
+     "London, United Kingdom",
+     5714,
+     true
+    ],
+    [
+     "Open Departure",
+     6475,
+     true
+    ],
+    [
+     "Tuesday, October 20, 2026",
+     6969,
+     true
+    ],
+    [
+     "Done. Search for one-way flights, departing on October 20, 2026",
+     7380,
+     false
+    ],
+    [
+     "Search",
+     8122,
+     true
+    ],
+    [
+     "Wait for the page to update",
+     8952,
+     false
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "candidate",
+   "task": "flights",
+   "status": "predicted",
+   "verified": false,
+   "detail": {
+    "search_page": false,
+    "one_way": true,
+    "origin": true,
+    "destination": false,
+    "date": false,
+    "year": false,
+    "results": false
+   },
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 10.384434213s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 3843,
+   "decisions": 6,
+   "actions": 4,
+   "waits": 0,
+   "decision_ms": 1843,
+   "text_calls": 1,
+   "text_ms": 920,
+   "input_tokens": 20949,
+   "cdp_calls": 44,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     504
+    ],
+    [
+     "CLICK",
+     "2",
+     1219
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     1967
+    ],
+    [
+     "CLICK",
+     "3",
+     3434
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     3818
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     4131
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     522,
+     true
+    ],
+    [
+     "One way",
+     1242,
+     true
+    ],
+    [
+     "Where from?",
+     3099,
+     true
+    ],
+    [
+     "Zürich, Switzerland",
+     3455,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "baseline",
+   "task": "wiki",
+   "status": "predicted",
+   "verified": false,
+   "detail": "https://en.wikipedia.org/wiki/Main_Page",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ...  to: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 619.20646ms.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 483,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 6083,
+   "cdp_calls": 7,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     613
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "basewin",
+   "task": "wiki",
+   "status": "done",
+   "verified": true,
+   "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 5273,
+   "decisions": 4,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 2108,
+   "text_calls": 1,
+   "text_ms": 1527,
+   "input_tokens": 25917,
+   "cdp_calls": 35,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     810
+    ],
+    [
+     "CLICK",
+     "3",
+     2994
+    ],
+    [
+     "CLICK",
+     "3",
+     3369
+    ],
+    [
+     "DONE",
+     null,
+     5230
+    ]
+   ],
+   "history": [
+    [
+     "Search Wikipedia",
+     2376,
+     true
+    ],
+    [
+     "Gödel's incompleteness theorems   Limitative results in mathematical logic",
+     3383,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "candidate",
+   "task": "wiki",
+   "status": "done",
+   "verified": true,
+   "detail": "https://en.wikipedia.org/wiki/G%C3%B6del%27s_incompleteness_theorems",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 4107,
+   "decisions": 3,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 1366,
+   "text_calls": 1,
+   "text_ms": 978,
+   "input_tokens": 19739,
+   "cdp_calls": 33,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     652
+    ],
+    [
+     "CLICK",
+     "3",
+     2593
+    ],
+    [
+     "DONE",
+     null,
+     4076
+    ]
+   ],
+   "history": [
+    [
+     "Search Wikipedia",
+     1664,
+     true
+    ],
+    [
+     "Gödel's incompleteness theorems   Limitative results in mathematical logic",
+     2606,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "baseline",
+   "task": "hotel",
+   "status": "done",
+   "verified": true,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel#casa-flora",
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 3857,
+   "decisions": 6,
+   "actions": 5,
+   "waits": 0,
+   "decision_ms": 2173,
+   "text_calls": 1,
+   "text_ms": 962,
+   "input_tokens": 16666,
+   "cdp_calls": 55,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "4",
+     786
+    ],
+    [
+     "CLICK",
+     "5",
+     2346
+    ],
+    [
+     "SELECT",
+     "6:1",
+     2812
+    ],
+    [
+     "CLICK",
+     "7",
+     3137
+    ],
+    [
+     "CLICK",
+     "8",
+     3555
+    ],
+    [
+     "DONE",
+     null,
+     3855
+    ]
+   ],
+   "history": [
+    [
+     "Destination",
+     1761,
+     true
+    ],
+    [
+     "Find stays",
+     2354,
+     true
+    ],
+    [
+     "Stay category → Design",
+     2814,
+     true
+    ],
+    [
+     "Free cancellation",
+     3142,
+     true
+    ],
+    [
+     "View Casa Flora",
+     3563,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "basewin",
+   "task": "hotel",
+   "status": "predicted",
+   "verified": false,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 18.141190474s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 575,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 3063,
+   "cdp_calls": 8,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "4",
+     683
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "candidate",
+   "task": "hotel",
+   "status": "predicted",
+   "verified": false,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... d to: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 8.3737262s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 604,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 3063,
+   "cdp_calls": 8,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "4",
+     713
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "candidate",
+   "task": "flights",
+   "status": "done",
+   "verified": true,
+   "detail": {
+    "search_page": true,
+    "one_way": true,
+    "origin": true,
+    "destination": true,
+    "date": true,
+    "year": true,
+    "results": true
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 11328,
+   "decisions": 16,
+   "actions": 11,
+   "waits": 1,
+   "decision_ms": 5006,
+   "text_calls": 2,
+   "text_ms": 1797,
+   "input_tokens": 84558,
+   "cdp_calls": 97,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     427
+    ],
+    [
+     "CLICK",
+     "2",
+     1129
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     1842
+    ],
+    [
+     "CLICK",
+     "3",
+     3264
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     3639
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     3923
+    ],
+    [
+     "CLICK",
+     "3",
+     5335
+    ],
+    [
+     "CLICK",
+     "18",
+     5961
+    ],
+    [
+     "CLICK",
+     "29",
+     6750
+    ],
+    [
+     "CLICK",
+     "29",
+     7058
+    ],
+    [
+     "CLICK",
+     "29",
+     7363
+    ],
+    [
+     "CLICK",
+     "48",
+     7803
+    ],
+    [
+     "CLICK",
+     "48",
+     8112
+    ],
+    [
+     "CLICK",
+     "19",
+     8798
+    ],
+    [
+     "WAIT",
+     null,
+     9477
+    ],
+    [
+     "DONE",
+     null,
+     11306
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     444,
+     true
+    ],
+    [
+     "One way",
+     1156,
+     true
+    ],
+    [
+     "Where from?",
+     2937,
+     true
+    ],
+    [
+     "Zürich, Switzerland",
+     3290,
+     true
+    ],
+    [
+     "Where to? ",
+     5053,
+     true
+    ],
+    [
+     "London, United Kingdom",
+     5364,
+     true
+    ],
+    [
+     "Open Departure",
+     6015,
+     true
+    ],
+    [
+     "Tuesday, October 20, 2026 , 1409777 Vietnamese dong, Cheapest price",
+     7418,
+     true
+    ],
+    [
+     "Done. Search for one-way flights, departing on October 20, 2026",
+     8141,
+     true
+    ],
+    [
+     "Search",
+     8825,
+     true
+    ],
+    [
+     "Wait for the page to update",
+     9482,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "baseline",
+   "task": "flights",
+   "status": "blocked",
+   "verified": false,
+   "detail": {
+    "search_page": false,
+    "one_way": false,
+    "origin": false,
+    "destination": false,
+    "date": false,
+    "year": false,
+    "results": false
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 1225,
+   "decisions": 3,
+   "actions": 1,
+   "waits": 0,
+   "decision_ms": 776,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 9101,
+   "cdp_calls": 24,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     375
+    ],
+    [
+     "CLICK",
+     "12",
+     838
+    ],
+    [
+     "BLOCKED",
+     null,
+     1222
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     391,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "basewin",
+   "task": "flights",
+   "status": "done",
+   "verified": true,
+   "detail": {
+    "search_page": true,
+    "one_way": true,
+    "origin": true,
+    "destination": true,
+    "date": true,
+    "year": true,
+    "results": true
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 11078,
+   "decisions": 20,
+   "actions": 11,
+   "waits": 1,
+   "decision_ms": 6146,
+   "text_calls": 2,
+   "text_ms": 1886,
+   "input_tokens": 102697,
+   "cdp_calls": 135,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     385
+    ],
+    [
+     "CLICK",
+     "2",
+     946
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     1570
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     1878
+    ],
+    [
+     "CLICK",
+     "3",
+     3474
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     3805
+    ],
+    [
+     "TYPE_TEXT",
+     "16",
+     4174
+    ],
+    [
+     "CLICK",
+     "3",
+     5729
+    ],
+    [
+     "CLICK",
+     "18",
+     6063
+    ],
+    [
+     "CLICK",
+     "18",
+     6364
+    ],
+    [
+     "CLICK",
+     "29",
+     6806
+    ],
+    [
+     "CLICK",
+     "48",
+     7394
+    ],
+    [
+     "CLICK",
+     "48",
+     7752
+    ],
+    [
+     "CLICK",
+     "48",
+     8159
+    ],
+    [
+     "WAIT",
+     null,
+     8529
+    ],
+    [
+     "CLICK",
+     "19",
+     8836
+    ],
+    [
+     "WAIT",
+     null,
+     9331
+    ],
+    [
+     "WAIT",
+     null,
+     9616
+    ],
+    [
+     "WAIT",
+     null,
+     10018
+    ],
+    [
+     "DONE",
+     null,
+     11057
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     404,
+     true
+    ],
+    [
+     "One way",
+     973,
+     true
+    ],
+    [
+     "Where from?",
+     3150,
+     true
+    ],
+    [
+     "Zürich, Switzerland",
+     3499,
+     true
+    ],
+    [
+     "Where to? ",
+     5235,
+     true
+    ],
+    [
+     "London, United Kingdom",
+     5753,
+     true
+    ],
+    [
+     "Open Departure",
+     6411,
+     true
+    ],
+    [
+     "Tuesday, October 20, 2026",
+     6831,
+     true
+    ],
+    [
+     "Done. Search for one-way flights, departing on October 20, 2026",
+     8170,
+     false
+    ],
+    [
+     "Search",
+     8914,
+     true
+    ],
+    [
+     "Wait for the page to update",
+     9722,
+     false
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "candidate",
+   "task": "wiki",
+   "status": "predicted",
+   "verified": false,
+   "detail": "https://en.wikipedia.org/wiki/Main_Page",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 11.806000807s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 503,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 6105,
+   "cdp_calls": 10,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     786
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "baseline",
+   "task": "wiki",
+   "status": "predicted",
+   "verified": false,
+   "detail": "https://en.wikipedia.org/wiki/Main_Page",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... to: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 688.410236ms.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 1941,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 6105,
+   "cdp_calls": 9,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     2150
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "basewin",
+   "task": "wiki",
+   "status": "predicted",
+   "verified": false,
+   "detail": "https://en.wikipedia.org/wiki/Main_Page",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 50.594825335s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 490,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 6105,
+   "cdp_calls": 7,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     645
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "candidate",
+   "task": "hotel",
+   "status": "predicted",
+   "verified": false,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 40.900625708s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 492,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 3063,
+   "cdp_calls": 8,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "4",
+     608
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "baseline",
+   "task": "hotel",
+   "status": "predicted",
+   "verified": false,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 31.289965554s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 598,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 3063,
+   "cdp_calls": 9,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "4",
+     732
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "basewin",
+   "task": "hotel",
+   "status": "predicted",
+   "verified": false,
+   "detail": "http://127.0.0.1:8767/fixture.html?scenario=travel",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 21.748746766s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 462,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 3063,
+   "cdp_calls": 9,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "4",
+     600
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "basewin",
+   "task": "flights",
+   "status": "predicted",
+   "verified": false,
+   "detail": {
+    "search_page": false,
+    "one_way": true,
+    "origin": false,
+    "destination": false,
+    "date": false,
+    "year": false,
+    "results": false
+   },
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... to: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 9.844872051s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 1749,
+   "decisions": 4,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 1379,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 13987,
+   "cdp_calls": 37,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     450
+    ],
+    [
+     "CLICK",
+     "2",
+     1070
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     1725
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     2114
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     468,
+     true
+    ],
+    [
+     "One way",
+     1096,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "candidate",
+   "task": "flights",
+   "status": "predicted",
+   "verified": false,
+   "detail": {
+    "search_page": false,
+    "one_way": true,
+    "origin": false,
+    "destination": false,
+    "date": false,
+    "year": false,
+    "results": false
+   },
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... to: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 57.98655853s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 1527,
+   "decisions": 3,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 788,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 9726,
+   "cdp_calls": 25,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     387
+    ],
+    [
+     "CLICK",
+     "2",
+     1072
+    ],
+    [
+     "TYPE_TEXT",
+     "15",
+     1924
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     406,
+     true
+    ],
+    [
+     "One way",
+     1101,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "baseline",
+   "task": "flights",
+   "status": "blocked",
+   "verified": false,
+   "detail": {
+    "search_page": false,
+    "one_way": false,
+    "origin": false,
+    "destination": false,
+    "date": false,
+    "year": false,
+    "results": false
+   },
+   "error": null,
+   "quota": false,
+   "elapsed_ms": 1700,
+   "decisions": 4,
+   "actions": 2,
+   "waits": 0,
+   "decision_ms": 1083,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 13384,
+   "cdp_calls": 33,
+   "ops": [
+    [
+     "CLICK",
+     "12",
+     406
+    ],
+    [
+     "CLICK",
+     "12",
+     874
+    ],
+    [
+     "CLICK",
+     "12",
+     1341
+    ],
+    [
+     "BLOCKED",
+     null,
+     1696
+    ]
+   ],
+   "history": [
+    [
+     "Change ticket type. Round trip",
+     421,
+     true
+    ],
+    [
+     "Change ticket type. Round trip",
+     883,
+     true
+    ]
+   ]
+  },
+  {
+   "batch": "run3",
+   "arm": "basewin",
+   "task": "wiki",
+   "status": "predicted",
+   "verified": false,
+   "detail": "https://en.wikipedia.org/wiki/Main_Page",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 39.117418124s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 480,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 6105,
+   "cdp_calls": 9,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     693
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "candidate",
+   "task": "wiki",
+   "status": "predicted",
+   "verified": false,
+   "detail": "https://en.wikipedia.org/wiki/Main_Page",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 29.095835938s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 673,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 6105,
+   "cdp_calls": 9,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     871
+    ]
+   ],
+   "history": []
+  },
+  {
+   "batch": "run3",
+   "arm": "baseline",
+   "task": "wiki",
+   "status": "predicted",
+   "verified": false,
+   "detail": "https://en.wikipedia.org/wiki/Main_Page",
+   "error": "RuntimeError: Model provider returned HTTP 429: You exceeded your current quota, please check your plan and billing details. For more information on ... o: https://ai.dev/rate-limit. * Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash-lite Please retry in 19.473131712s.; no action executed.",
+   "quota": true,
+   "elapsed_ms": 0,
+   "decisions": 1,
+   "actions": 0,
+   "waits": 0,
+   "decision_ms": 553,
+   "text_calls": 0,
+   "text_ms": 0,
+   "input_tokens": 6105,
+   "cdp_calls": 9,
+   "ops": [
+    [
+     "TYPE_TEXT",
+     "2",
+     749
+    ]
+   ],
+   "history": []
+  }
+ ]
+}

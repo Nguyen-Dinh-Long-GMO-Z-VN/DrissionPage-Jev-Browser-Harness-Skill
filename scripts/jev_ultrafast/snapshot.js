@@ -6,6 +6,12 @@
     const id=cache.ids.get(e); cache.nodes.set(id,e); return id;
   };
   for (const [id,e] of cache.nodes) if (!e.isConnected) cache.nodes.delete(id);
+  // Last DOM mutation time. Post-input waits read it to let transitions finish before the next decision.
+  if (!cache.observer) {
+    cache.changed=performance.now();
+    cache.observer=new MutationObserver(()=>{cache.changed=performance.now()});
+    cache.observer.observe(document,{subtree:true,childList:true,attributes:true,characterData:true});
+  }
   const safe = e => !['password','file','hidden'].includes(e.type);
   const visible = e => !e.closest('[aria-hidden="true"],[inert]') &&
     e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true});

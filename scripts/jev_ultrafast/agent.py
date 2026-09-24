@@ -1,12 +1,20 @@
 """The complete agent loop. Typed choices, observable state, bounded execution."""
 
 import base64
+import json
+import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from .browser import Browser, StalePage
 from .model import MissingValue, action_space, choose, field_context, field_text, warm_connections
 from .questions import MAX_STEPS
+
+# JEV_TEXT_PREFETCH=1 generates text for one likely field while TypeSafe chooses (see _prefetch_text).
+PREFETCH = ThreadPoolExecutor(max_workers=2, thread_name_prefix="jev-text")
+# An observation this recent needs no freshness read before choosing; act() still checks before input.
+RECENT_OBSERVATION_S = 0.05
 
 
 def initial_state(browser, goal, page, *, record=False):
@@ -21,6 +29,7 @@ def initial_state(browser, goal, page, *, record=False):
         plan_index=0,
         decisions=[],
         text_calls=[],
+        text_prefetches=0,
         elapsed_ms=0,
         started_at=None,
         record=record,
@@ -38,11 +47,22 @@ def summarize(agent):
         "title": s["page"]["title"],
         "steps": len(s["history"]),
         "model_calls": len(s["decisions"]),
+        "text_calls": len(s["text_calls"]),
+        "text_prefetches": s.get("text_prefetches", 0),
         "elapsed_ms": s["elapsed_ms"],
         "history": [h["action"] for h in s["history"]],
         # A DONE choice is not proof: name every field whose text could not be read back.
         "unverified_text": [h["action"] for h in s["history"] if h.get("typed") == "unverified"],
     }
+
+
+def likely_text_node(decision, page):
+    """The node the type_text_target head would fill. It only picks what to prefetch; it never executes."""
+    answer = (decision.get("raw_answers") or {}).get("type_text_target")
+    targets = action_space(page["actions"])[1].get("TYPE_TEXT", {})
+    choice = answer.get("choice") if isinstance(answer, dict) else None
+    action = targets.get(choice) if isinstance(choice, str) else None
+    return action["node"] if action else None
 
 
 class Agent:
@@ -84,6 +104,32 @@ class Agent:
         agent.state = initial_state(browser, task, browser.observe(screenshot=screenshots))
         return agent
 
+    def _observe(self):
+        self.state["page"] = self.state["browser"].observe(screenshot=self.screenshots)
+        self.observed_at = time.perf_counter()
+        return self.state["page"]
+
+    def _prefetch_text(self, page):
+        """Opt-in (JEV_TEXT_PREFETCH=1): start the text helper while TypeSafe chooses, for one field.
+
+        The field is the previous decision's type_text_target answer, when that node is still editable here.
+        The helper gets the exact input _act would send, and only an identical input can consume the result, so
+        a prefetched value is the value TYPE_TEXT would have generated. An unused result is dropped at the next
+        decision. This costs at most one extra helper call per decision, so it stays off by default: a helper on
+        a small rate limit (free tiers allow a few requests per minute) would spend its quota on guesses.
+        """
+        self.prefetched = {}
+        state = self.state
+        if not (os.environ.get("TEXT_MODEL_API_KEY") and os.environ.get("JEV_TEXT_PREFETCH") == "1"):
+            return
+        node = state["decisions"][-1].get("text_node") if state["decisions"] else None
+        action = next((a for a in page["actions"] if a["kind"] == "fill" and a["node"] == node), None)
+        if action is None:
+            return
+        context = field_context(state["goal"], action, page, state["history"])
+        self.prefetched[json.dumps(context, sort_keys=True)] = PREFETCH.submit(field_text, context)
+        state["text_prefetches"] = state.get("text_prefetches", 0) + 1
+
     def snapshot(self):
         return {
             **{k: v for k, v in self.state.items() if k != "browser"},
@@ -109,7 +155,7 @@ class Agent:
         except StalePage:
             state["decision"] = None
             state["status"] = "ready"
-            state["page"] = state["browser"].observe(screenshot=self.screenshots)
+            self._observe()
             state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
 
     def _predict(self):
@@ -118,18 +164,21 @@ class Agent:
             raise ValueError("Start a demo first")
         if state["started_at"] is None:
             state["started_at"] = time.perf_counter()
-        if not state["browser"].fresh(state["page"]):
-            state["page"] = state["browser"].observe(screenshot=self.screenshots)
+        recent = time.perf_counter() - getattr(self, "observed_at", float("-inf")) < RECENT_OBSERVATION_S
+        if not recent and not state["browser"].fresh(state["page"]):
+            self._observe()
         state["page"] = state["browser"].settle(state["page"], screenshot=self.screenshots)
         state["decision"] = None
         if state["status"] in {"done", "blocked"}:
             raise ValueError("This run has stopped. Start a fresh demo.")
         if len(state["decisions"]) >= self.max_steps * 2:
             raise ValueError("Reached the demo's model-call budget")
+        self._prefetch_text(state["page"])
         state["decision"] = choose(state["page"], state["goal"], state["history"])
         state["decisions"].append(
             {
                 **state["decision"],
+                "text_node": likely_text_node(state["decision"], state["page"]),
                 "fingerprint": state["page"]["fingerprint"],
                 "elapsed_ms": round((time.perf_counter() - state["started_at"]) * 1000),
             }
@@ -161,11 +210,16 @@ class Agent:
             if not state["browser"].fresh(page):
                 raise StalePage("Page changed before text generation. Choose again.")
             context = field_context(state["goal"], action, page, state["history"])
+            prefetched = getattr(self, "prefetched", {}).pop(json.dumps(context, sort_keys=True), None)
             if self.pending_text and self.pending_text[0] == context:
                 _, text, helper = self.pending_text
             else:
                 try:
-                    text, helper = field_text(context)
+                    if prefetched:
+                        text, helper = prefetched.result()
+                        helper = {**helper, "prefetched": True}
+                    else:
+                        text, helper = field_text(context)
                 except MissingValue as missing:
                     # The goal lacks this value. Stop cleanly and say which field needs it.
                     state["status"] = "blocked"
@@ -215,7 +269,7 @@ class Agent:
         self.pending_text = None
         # Record execution before observing. A stale post-action observation must not erase the action.
         record(typed=(result or {}).get("typed"))
-        state["page"] = state["browser"].observe(screenshot=self.screenshots)
+        self._observe()
         state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
         state["history"][-1].update(
             page_changed=state["page"]["fingerprint"] != page["fingerprint"],

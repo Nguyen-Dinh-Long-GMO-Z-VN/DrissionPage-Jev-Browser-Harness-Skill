@@ -46,8 +46,8 @@ PY
 Three levels, from coarse to fine:
 
 - `jev_run(goal, max_steps=20)` runs the full loop on the current tab until `done` or `blocked`. Pass `url=` to use
-  a dedicated background tab instead. Returns `{status, reason, url, title, steps, model_calls, elapsed_ms,
-  history, unverified_text}`. `max_steps` caps executed actions and model calls (twice that), so a stuck run cannot drain a small
+  a dedicated background tab instead. Returns `{status, reason, url, title, steps, model_calls, text_calls,
+  text_prefetches, elapsed_ms, history, unverified_text}`. `max_steps` caps executed actions and model calls (twice that), so a stuck run cannot drain a small
   quota such as Gemini's free tier (20 requests per model per day).
 - `jev_choose(goal)` does one observation and one TypeSafe decision and executes nothing. Read `operation`,
   `choice` and `confidence` before deciding what to do.

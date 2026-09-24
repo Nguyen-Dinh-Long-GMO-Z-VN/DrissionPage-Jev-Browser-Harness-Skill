@@ -1,5 +1,6 @@
 """Local-browser freshness/execution regressions. No model calls or external websites."""
 
+import time
 from urllib.parse import quote
 
 from jev_ultrafast.browser import Browser, StalePage
@@ -173,6 +174,41 @@ def main():
         browser.act(wide, page)
         assert browser.evaluate("window.wideHit") == 1
         passed.append("click escapes a midpoint cover via a clear interior point")
+
+        # A dialog that fades out in script steps, then leaves the DOM: the next observation must see it closed.
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <div id="dialog" role="dialog"><button id="close">Close dialog</button></div>
+          <button>Search</button>"""))
+        browser.evaluate("""document.querySelector('#close').onclick=()=>{
+          const d=document.querySelector('#dialog'); let step=0;
+          const fade=setInterval(()=>{d.style.opacity=String(1-++step/5);
+            if (step===5) {clearInterval(fade); d.remove()}},30)}""")
+        page = browser.observe(screenshot=False)
+        close = next(a for a in page["actions"] if a["label"] == "Close dialog")
+        browser.act(close, page)
+        page = browser.observe(screenshot=False)
+        assert [a["label"] for a in page["actions"] if a["kind"] == "click"] == ["Search"], page["actions"]
+        assert browser.fresh(page)
+        passed.append("observation after a click waits out a closing transition")
+
+        browser.evaluate("document.body.innerHTML='<p id=status>Loading results</p>'")
+        page = browser.observe(screenshot=False)
+        browser.evaluate("setTimeout(()=>{document.querySelector('#status').textContent='3 results'},300)")
+        wait = next(a for a in page["actions"] if a["kind"] == "wait")
+        started = time.monotonic()
+        browser.act(wait, page)
+        page = browser.observe(screenshot=False)
+        waited = time.monotonic() - started
+        assert "3 results" in page["text"] and waited < 1.2, (page["text"], waited)
+        passed.append(f"WAIT returns when loading content arrives ({waited * 1000:.0f} ms)")
+
+        page = browser.observe(screenshot=False)
+        started = time.monotonic()
+        browser.act(wait, page)
+        browser.observe(screenshot=False)
+        waited = time.monotonic() - started
+        assert waited < 0.8, waited
+        passed.append(f"WAIT on a page that stays still returns early ({waited * 1000:.0f} ms)")
 
         browser.call("Page.navigate", url="about:blank")
         assert not browser.fresh(page, field)
