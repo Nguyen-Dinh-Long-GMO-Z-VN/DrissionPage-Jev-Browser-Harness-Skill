@@ -342,6 +342,8 @@ def _fill_request(actual):
     def call(method, **params):
         if method == "Runtime.evaluate" and "action.node" in params["expression"]:
             return {"result": {"value": {"x": 1, "y": 1}}}
+        if method == "Runtime.evaluate" and "activeElement" in params["expression"]:
+            return {"result": {"value": True}}
         if method == "Runtime.evaluate":
             if isinstance(actual, Exception):
                 raise actual
@@ -682,3 +684,79 @@ def test_expect_change_makes_the_next_observation_wait_like_wait():
     b.after_input = None
     b.expect_change()
     assert b.after_input["kind"] == "wait"
+
+
+def segmented_cdp(itype, assigned):
+    """Resolve the target as `itype`, then report what the control kept after assignment."""
+
+    def respond(method, **params):
+        if method != "Runtime.evaluate":
+            return {}
+        if "action.node" in params["expression"]:
+            return {"result": {"value": {"x": 5, "y": 6, "itype": itype}}}
+        return {"result": {"value": assigned}}
+
+    return Mock(side_effect=respond)
+
+
+def fill_request(text="2026-10-20"):
+    return {"operation": "act", "session": "test", "text": text, "action": {"id": "e1", "kind": "fill", "node": 10}}
+
+
+@pytest.mark.parametrize("itype", ["date", "time", "datetime-local", "month", "week"])
+def test_segmented_control_is_assigned_instead_of_typed(monkeypatch, itype):
+    import jev_ultrafast.browser as browser
+
+    cdp = segmented_cdp(itype, "2026-10-20")
+    monkeypatch.setattr(browser, "cdp", cdp)
+    assert browser_operation(fill_request()) == {"executed": "e1", "typed": "verified"}
+    methods = [call.args[0] for call in cdp.call_args_list]
+    assert "Input.insertText" not in methods and methods.count("Runtime.evaluate") == 2
+    assert "2026-10-20" in cdp.call_args_list[-1].kwargs["expression"]
+
+
+def test_segmented_control_rejecting_the_value_stops_the_action(monkeypatch):
+    import jev_ultrafast.browser as browser
+
+    monkeypatch.setattr(browser, "cdp", segmented_cdp("date", ""))
+    with pytest.raises(RuntimeError, match="date field rejected"):
+        browser_operation(fill_request("October 20 2026"))
+
+
+def test_plain_text_control_still_receives_real_keystrokes(monkeypatch):
+    import jev_ultrafast.browser as browser
+
+    monkeypatch.setattr(browser.time, "sleep", Mock())
+    cdp = segmented_cdp("text", "Zurich")
+    monkeypatch.setattr(browser, "cdp", cdp)
+    assert browser_operation(fill_request("Zurich"))["executed"] == "e1"
+    assert "Input.insertText" in [call.args[0] for call in cdp.call_args_list]
+
+
+def test_text_helper_sees_the_iso_format_of_a_date_field():
+    field = {"id": "e1", "kind": "fill", "label": "Departure", "role": "textbox", "value": "", "node": 5,
+             "format": "YYYY-MM-DD"}
+    assert model.field_context("Fly on 20 Oct 2026", field, page(), [])["field"]["format"] == "YYYY-MM-DD"
+    assert "format" not in model.field_context("Find a book", page()["actions"][0], page(), [])["field"]
+
+
+@pytest.mark.parametrize("lost", [1, 2])
+def test_fill_stops_when_focus_moves_before_typing(lost):
+    """Checked before Select All and again before insertion; a lost focus is not retried as stale."""
+
+    checks = []
+
+    def call(method, **params):
+        if method == "Runtime.evaluate" and "action.node" in params["expression"]:
+            return {"result": {"value": {"x": 1, "y": 1, "itype": "text"}}}
+        if method == "Runtime.evaluate" and "activeElement" in params["expression"]:
+            checks.append(1)
+            return {"result": {"value": len(checks) != lost}}
+        if method == "Input.insertText":
+            raise AssertionError("typed without focus")
+        return {}
+
+    request = {"operation": "act", "session": "s", "call": call, "text": "Zurich",
+               "action": {"id": "e2", "kind": "fill", "node": 2}}
+    with pytest.raises(RuntimeError, match="lost focus"):
+        browser_operation(request)

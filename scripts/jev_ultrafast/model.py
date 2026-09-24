@@ -206,7 +206,8 @@ def choose(state, goal, history):
 def field_context(goal, action, page, history):
     return {
         "goal": goal,
-        "field": {k: action.get(k) for k in ("label", "role", "value")},
+        # `format` is present only for date/time controls, which accept nothing but that ISO shape.
+        "field": {k: action[k] for k in ("label", "role", "value", "format") if k in action},
         "page": {"title": page["title"], "text": page["text"][:6000]},
         "recent_actions": [{k: h.get(k) for k in ("action", "text")} for h in history[-6:]],
     }

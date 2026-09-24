@@ -90,6 +90,10 @@ def cdp(method, **params):
     return harness_cdp(method, **params)
 
 
+# Chrome renders these as segmented spinners; they ignore inserted text and take an ISO value.
+SEGMENTED_INPUTS = {"time", "date", "datetime-local", "month", "week"}
+
+
 class StalePage(ValueError):
     """A decision no longer refers to the observed page."""
 
@@ -300,7 +304,7 @@ def browser_operation(request):
                 e.dispatchEvent(new Event('input',{bubbles:true}));
                 e.dispatchEvent(new Event('change',{bubbles:true}));
               }
-              return target;
+              return {...target,itype:e.tagName==='INPUT' ? e.type : ''};
             })(""" + json.dumps(action) + ")")
             if target is None:
                 if kind == "select":
@@ -310,7 +314,37 @@ def browser_operation(request):
                 x, y = target["x"], target["y"]
                 for event in ("mousePressed", "mouseReleased"):
                     call("Input.dispatchMouseEvent", type=event, x=x, y=y, button="left", clickCount=1)
+                if kind == "fill" and target.get("itype") in SEGMENTED_INPUTS:
+                    # Assign the observed node's value like a dropdown; the text stays a JSON argument.
+                    assigned = evaluate(
+                        "(request => { const e=window.__jevFast?.nodes.get(request.node);"
+                        " if (!e?.isConnected) return null; e.value=request.text;"
+                        " e.dispatchEvent(new Event('input',{bubbles:true}));"
+                        " e.dispatchEvent(new Event('change',{bubbles:true})); return e.value; })("
+                        + json.dumps({"node": action["node"], "text": request["text"]})
+                        + ")"
+                    )
+                    if assigned != request["text"]:
+                        # The control keeps only a valid ISO value; anything else leaves it empty.
+                        raise RuntimeError(f"The {target['itype']} field rejected {request['text']!r}; inspect it.")
+                    return {"executed": action["id"], "typed": "verified"}
                 if kind == "fill":
+
+                    def require_focus():
+                        # A page's click or key handler can move focus; typing would then land in another field.
+                        try:
+                            focused = evaluate(
+                                "(node => { const e=window.__jevFast?.nodes.get(node);"
+                                " return !!(e?.isConnected && e.contains(document.activeElement) &&"
+                                " !e.matches(':disabled') && !e.readOnly); })(" + str(action["node"]) + ")"
+                            )
+                        except StalePage:
+                            focused = False
+                        if not focused:
+                            # The click already ran, so this is not a stale decision to retry (upstream #80).
+                            raise RuntimeError("The text field lost focus before typing; inspect before retrying.")
+
+                    require_focus()
                     call(
                         "Input.dispatchKeyEvent",
                         type="keyDown",
@@ -326,6 +360,7 @@ def browser_operation(request):
                         code="KeyA",
                         modifiers=4 if sys.platform == "darwin" else 2,
                     )
+                    require_focus()  # key handlers can redirect focus during Select All as well
                     call("Input.insertText", text=request["text"])
                     return {"executed": action["id"], "typed": read_back(action["node"], request["text"])}
         return {"executed": action["id"]}

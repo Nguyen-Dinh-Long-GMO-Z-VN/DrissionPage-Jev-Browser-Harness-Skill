@@ -328,6 +328,49 @@ def main():
             assert next(a for a in page["actions"] if a["label"] == label)["checked"] == "true", label
         passed.append("hidden radios and checkboxes (clipped, transparent, off-screen) are clicked via their labels")
 
+        # A handler that moves focus must not make the text land in another field (upstream PR #80).
+        for event in ("mouseup", "keydown"):
+            browser.evaluate("document.body.innerHTML=" + repr("""
+              <input id="a" aria-label="Name"><input id="b" aria-label="Notes" value="keep me">"""))
+            browser.evaluate(f"document.querySelector('#a').addEventListener('{event}',"
+                             "()=>document.querySelector('#b').focus())")
+            page = browser.observe(screenshot=False)
+            name = next(a for a in page["actions"] if a["label"] == "Name" and a["kind"] == "fill")
+            try:
+                browser.act(name, page, text="Ada")
+            except RuntimeError:
+                pass
+            else:
+                raise AssertionError(f"Typing must stop when {event} moves focus away")
+            assert browser.evaluate("document.querySelector('#b').value") == "keep me", event
+        passed.append("typing stops when a click or key handler moves focus to another field")
+
+        # Date and time inputs are fillable with ISO values (upstream PR #116).
+        browser.evaluate("document.body.innerHTML=" + repr("""
+          <label>Appointment date<input id="d" type="date"></label>
+          <label>Appointment time<input id="t" type="time"></label>
+          <label>Start month<input id="m" type="month"></label>"""))
+        page = browser.observe(screenshot=False)
+        fills = {a["label"]: a for a in page["actions"] if a["kind"] == "fill"}
+        assert {"Appointment date", "Appointment time", "Start month"} <= set(fills), sorted(fills)
+        assert fills["Appointment date"]["format"] == "YYYY-MM-DD"
+        assert not any(a["label"].startswith("Open Appointment") for a in page["actions"])
+        for label, selector, value in [("Appointment date", "#d", "2026-10-20"),
+                                       ("Appointment time", "#t", "09:15"), ("Start month", "#m", "2027-03")]:
+            page = browser.observe(screenshot=False)
+            action = next(a for a in page["actions"] if a["kind"] == "fill" and a["label"] == label)
+            assert browser.act(action, page, text=value)["typed"] == "verified"
+            assert browser.evaluate(f"document.querySelector('{selector}').value") == value, label
+        page = browser.observe(screenshot=False)
+        action = next(a for a in page["actions"] if a["kind"] == "fill" and a["label"] == "Appointment date")
+        try:
+            browser.act(action, page, text="October 20 2026")
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("An unparseable date must not be reported as entered")
+        passed.append("date, time, and month inputs take ISO values and reject anything else")
+
         browser.call("Page.navigate", url="about:blank")
         assert not browser.fresh(page, field)
         passed.append("navigation invalidates the old document")
