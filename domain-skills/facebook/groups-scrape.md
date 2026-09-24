@@ -1,67 +1,69 @@
-# Facebook Group: thu thập bài viết hàng loạt qua GraphQL
+# Facebook Groups: Bulk Post Collection via GraphQL
 
-Nguồn: script và hướng dẫn của người dùng (`HUONG_DAN_SCRAPE_FB.md`, `scrape_fb_group.py`).
-Script nằm cùng thư mục: `scrape_fb_group.py`. Chưa được chạy lại sau khi đưa vào repo.
+Source: the user-provided guide and script (`HUONG_DAN_SCRAPE_FB.md`, `scrape_fb_group.py`).
+The script is in this directory. It has not been rerun since it was added to this repository.
 
-Để agent tự đọc ghi chú này, chép thư mục `domain-skills/facebook/` vào `$BH_AGENT_WORKSPACE/domain-skills/facebook/`
-(mặc định `~/.config/browser-harness/agent-workspace/`) rồi đặt `BH_DOMAIN_SKILLS=1`.
+To make this note available to the agent, copy `domain-skills/facebook/` to
+`$BH_AGENT_WORKSPACE/domain-skills/facebook/` (by default,
+`~/.config/browser-harness/agent-workspace/domain-skills/facebook/`) and set `BH_DOMAIN_SKILLS=1`.
 
+## When to use
 
-## Khi nào dùng
+- Collect dozens or hundreds of posts from a Facebook Group and export them to Excel.
+- Use Jev to open the group or operate its interface. Use this script to collect posts from GraphQL responses;
+  Jev reads page elements and does not parse GraphQL JSON.
 
-- Cần lấy nhiều bài (hàng chục đến hàng trăm) từ một Group và xuất Excel.
-- Không dùng Jev cho việc này: Jev đi từng bước theo bảng phần tử và không đọc được JSON GraphQL.
-  Dùng Jev để mở nhóm hay thao tác giao diện, dùng script này để thu dữ liệu.
+## Requirements
 
-## Yêu cầu
+- Chrome is running, the user is signed in to Facebook, and the account belongs to the group if it is private.
+  If the user is signed out, stop and ask them to sign in. Do not enter their password.
+- `openpyxl` is not declared in this repository's `pyproject.toml`. Supply it with `--with openpyxl`.
 
-- Chrome đang chạy, đã đăng nhập Facebook, và tài khoản đã là thành viên của nhóm (nhóm kín).
-  Chưa đăng nhập: dừng và hỏi người dùng, không nhập mật khẩu hộ.
-- `openpyxl` chưa được khai báo trong `pyproject.toml` của jev-ultrafast. Thêm `--with openpyxl` để chắc chắn.
-
-## Chạy
+## Run
 
 ```bash
-# từ thư mục gốc của repo (nơi đã `uv sync`)
+# From the repository root, after uv sync.
 uv run --with openpyxl python domain-skills/facebook/scrape_fb_group.py \
   --url "https://www.facebook.com/groups/<slug>/" --limit 50 --output /path/to/fb_posts.xlsx
 ```
 
-- `--url` bắt buộc. `--limit` mặc định 50. `--output` mặc định `fb_posts.xlsx`.
-- Cột Excel: STT, Ngày đăng (giờ Việt Nam), Tác giả, Nội dung, Link ảnh, Lượt Like, Lượt Comments, Link bài viết.
+- `--url` is required. `--limit` defaults to 50. `--output` defaults to `fb_posts.xlsx`.
+- Excel columns: No., Posted at (UTC+7), Author, Content, Image URLs, Likes, Comments, Post URL.
 
-## Cách hoạt động (điểm cần nhớ)
+## How it works
 
-1. Tìm tab đã mở đúng URL nhóm (`list_tabs` + `switch_tab`), nếu không có thì `new_tab`.
-2. `cdp("Network.enable")` rồi `drain_events()` để bỏ sự kiện cũ.
-3. Vòng lặp: `window.scrollBy(0, 2200)`, chờ 1.8 giây, lấy các `Network.responseReceived` có `graphql` trong URL,
-   đọc body bằng `Network.getResponseBody`.
-4. Body là nhiều dòng JSON. Duyệt đệ quy để tìm node `__typename == "Story"` (hoặc có `comet_sections` và `post_id`).
-5. Trích xuất từ node Story:
-   - Tác giả: `actors[0].name`.
-   - Thời gian: `creation_time`, dự phòng `tracking.page_insights.*.post_context.publish_time`.
-   - Nội dung: `comet_sections.content.story.comet_sections.message.rich_message[].text`, có nhiều đường dự phòng,
-     gồm `attached_story` cho bài chia sẻ.
-   - Ảnh: `attachments[].styles.attachment.media` và `all_subattachments`, các khoá `photo_image`, `image`, `large_share_image`.
-   - Like và comment: `comet_ufi_summary_and_actions_renderer.feedback.adaptive_ufi_action_renderers`.
-6. Lọc trùng theo `post_id`. Bỏ bài không có cả nội dung lẫn ảnh.
-7. Dừng khi đủ `--limit`, hoặc khi đứng yên: sau 12 lần cuộn không thêm bài thì cuộn xuống cuối trang và chờ 3 giây,
-   sau 25 lần thì thoát.
+1. Find an open tab for the group URL with `list_tabs` and `switch_tab`, or open one with `new_tab`.
+2. Call `cdp("Network.enable")`, then `drain_events()` to discard earlier events.
+3. Scroll by 2,200 pixels, wait 1.8 seconds, and collect `Network.responseReceived` events whose URLs contain
+   `graphql`. Read each body with `Network.getResponseBody`.
+4. Parse each JSON line and recursively find nodes with `__typename == "Story"`, or with both `comet_sections`
+   and `post_id`.
+5. Extract the fields from each Story:
+   - Author: `actors[0].name`.
+   - Timestamp: `creation_time`, falling back to `tracking.page_insights.*.post_context.publish_time`.
+   - Content: `comet_sections.content.story.comet_sections.message.rich_message[].text`, with other paths
+     including `attached_story` for shared posts.
+   - Images: `attachments[].styles.attachment.media` and `all_subattachments`, using the `photo_image`, `image`,
+     and `large_share_image` keys.
+   - Likes and comments: `comet_ufi_summary_and_actions_renderer.feedback.adaptive_ufi_action_renderers`.
+6. Deduplicate by `post_id`. Skip posts that have neither content nor images.
+7. Stop at `--limit`. After 12 scrolls without a new post, scroll to the bottom and wait 3 seconds. Stop after
+   25 scrolls without a new post.
 
-## Lưu ý và rủi ro
+## Notes and risks
 
-- Cấu trúc GraphQL của Facebook đổi định kỳ. Nếu số bài trích được ít bất thường, in thử một node Story và cập nhật
-  đường dẫn trích xuất, đừng đoán.
-- Bài trong nhóm chỉ hiện khi tài khoản đăng nhập là thành viên. Nếu ra 0 bài, kiểm tra trước xem trang có đang ở
-  màn hình đăng nhập hoặc trang giới thiệu nhóm hay không.
-- Cuộn liên tục và nhiều lần có thể khiến Facebook giới hạn tài khoản. Dùng `--limit` vừa đủ.
-- Dữ liệu chứa tên và nội dung của thành viên nhóm. Chỉ dùng cho mục đích người dùng đã nói rõ.
+- Facebook's GraphQL response structure can change. If the extracted post count is unexpectedly low, inspect
+  a Story node and update the extraction paths based on what you observe.
+- Private group posts are visible only to a signed-in member. If the script finds no posts, first check whether
+  the tab shows a login screen or group landing page.
+- Repeated scrolling can trigger Facebook account limits. Set `--limit` to the number of posts needed.
+- Posts contain group members' names and content. Use the data only for the user's stated purpose.
 
-## Xử lý sự cố
+## Troubleshooting
 
-| Triệu chứng | Việc cần làm |
+| Symptom | Action |
 | :--- | :--- |
-| Chưa đăng nhập | Mở Chrome, đăng nhập và vào nhóm trước khi chạy |
-| Nhóm kín | Tài khoản trong Chrome phải đã tham gia nhóm |
-| Không tải thêm bài | Kiểm tra mạng, tải lại trang nhóm rồi chạy lại |
-| `ModuleNotFoundError: openpyxl` | Chạy lại với `uv run --with openpyxl ...` |
+| Signed out | Ask the user to sign in to Facebook in Chrome and open the group before running the script. |
+| Private group | Confirm that the Chrome account is already a member of the group. |
+| No more posts load | Check the connection, reload the group page, and rerun the script. |
+| `ModuleNotFoundError: openpyxl` | Rerun with `uv run --with openpyxl ...`. |

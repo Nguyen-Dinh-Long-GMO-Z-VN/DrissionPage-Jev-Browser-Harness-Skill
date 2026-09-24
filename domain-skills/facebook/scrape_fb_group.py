@@ -135,7 +135,7 @@ def export_to_excel(posts, output_path):
     ws = wb.active
     ws.title = "Facebook Group Posts"
 
-    headers = ["STT", "Ngày đăng", "Tác giả", "Nội dung", "Link ảnh", "Lượt Like", "Lượt Comments", "Link bài viết"]
+    headers = ["No.", "Posted at (UTC+7)", "Author", "Content", "Image URLs", "Likes", "Comments", "Post URL"]
     ws.append(headers)
 
     header_fill = PatternFill(start_color="1877F2", end_color="1877F2", fill_type="solid")
