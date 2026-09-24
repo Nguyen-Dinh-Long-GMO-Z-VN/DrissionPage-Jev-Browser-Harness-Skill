@@ -5,9 +5,8 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from jev_ultrafast.demo import load_environment
-
 from jev_ultrafast import Agent
+from jev_ultrafast.demo import load_environment
 
 GOALS = (
     "Use the destination search and filters to find Design stays in Lisbon with Free cancellation, "

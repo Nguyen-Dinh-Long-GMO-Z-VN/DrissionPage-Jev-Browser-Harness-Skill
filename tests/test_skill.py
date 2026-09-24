@@ -3,6 +3,7 @@
 from unittest.mock import Mock
 
 import pytest
+
 from jev_ultrafast import skill as skill_module
 from jev_ultrafast.browser import StalePage
 from jev_ultrafast.skill import Skill

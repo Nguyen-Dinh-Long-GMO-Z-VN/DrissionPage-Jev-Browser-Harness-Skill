@@ -3,6 +3,7 @@
 from unittest.mock import Mock
 
 import pytest
+
 from jev_ultrafast import browser
 from jev_ultrafast.drission import DrissionBrowser, wait_for_response
 

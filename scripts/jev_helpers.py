@@ -25,6 +25,7 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 from browser_harness.helpers import cdp, current_tab  # noqa: E402
+
 from jev_ultrafast.browser import Browser  # noqa: E402
 from jev_ultrafast.env import load_env  # noqa: E402
 from jev_ultrafast.skill import Skill  # noqa: E402

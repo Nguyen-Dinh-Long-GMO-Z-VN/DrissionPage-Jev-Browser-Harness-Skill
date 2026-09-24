@@ -6,6 +6,7 @@ from copy import deepcopy
 from unittest.mock import Mock
 
 import pytest
+
 from jev_ultrafast import agent as loop
 from jev_ultrafast import model
 from jev_ultrafast.browser import StalePage, browser_operation, fingerprint

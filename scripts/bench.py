@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from browser_harness.helpers import cdp, click_at_xy, new_tab, page_info, type_text  # noqa: E402
+
 from jev_helpers import _detach, _tab_browser  # noqa: E402
 from jev_ultrafast.agent import Agent, summarize  # noqa: E402
 

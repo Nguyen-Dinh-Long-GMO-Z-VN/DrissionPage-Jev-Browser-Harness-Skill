@@ -25,6 +25,9 @@ packages = ["scripts/jev_ultrafast"]
 
 [tool.ruff]
 line-length = 120
+src = [".", "scripts"]  # jev_ultrafast lives in scripts/, so import sorting must treat it as first-party
+# Domain skills are field notes plus the scripts they describe, kept as contributed.
+extend-exclude = ["domain-skills"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]

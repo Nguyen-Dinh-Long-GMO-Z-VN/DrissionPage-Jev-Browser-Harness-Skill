@@ -89,6 +89,8 @@ Optional, from browser-harness and off by default. Set `BH_DOMAIN_SKILLS=1`. Not
 `$BH_AGENT_WORKSPACE/domain-skills/<site>/*.md`, and `goto_url(url)` returns up to 10 filenames for that host.
 `new_tab` and `jev_run` do not, so list the folder yourself.
 
+- This repo ships `domain-skills/facebook/` (bulk-scraping a Group's posts). Copy it into `$BH_AGENT_WORKSPACE/domain-skills/`
+  to use it.
 - Before a site-specific task, read every file in the site's folder, then pass what matters into the goal.
 - After you finish something by hand because Jev could not (a rich editor, a widget), write the working steps to
   that folder for next time. Keep them out of Jev's policy; it stays free of site-specific plans.
