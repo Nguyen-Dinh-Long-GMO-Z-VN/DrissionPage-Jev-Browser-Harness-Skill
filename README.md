@@ -8,6 +8,8 @@
 
 [Measurements](docs/performance.md) · [Read the loop](scripts/jev_ultrafast/agent.py)
 
+![Jev Ultrafast architecture: entry points, shared agent loop, browser backends, and independent verification](docs/jev-architecture.png)
+
 ## Contents
 
 - [Quick start](#quick-start)
@@ -105,6 +107,8 @@ uv run --env-file .env python examples/run.py \
 `examples/flights.py --keep-open` performs the flight search, checks the actual route, date, and results, and saves its trace. It does not select or book a flight.
 
 ## How it works
+
+![Jev's observe, choose, act, and verify loop](docs/jev-loop.png)
 
 Every observation produces a new element table:
 
