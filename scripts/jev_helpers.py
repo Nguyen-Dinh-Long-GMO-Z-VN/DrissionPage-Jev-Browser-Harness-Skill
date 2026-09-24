@@ -57,11 +57,12 @@ def _release(browser):
 _skill = Skill(_open, _release)
 
 
-def jev_run(goal, url=None, max_steps=20):
-    """Run the full Jev loop and return a result dict. With url=, uses a dedicated background tab;
+def jev_run(goal, url=None, max_steps=20, done_when=None):
+    """Run the full Jev loop and return a result dict. With url=, uses a dedicated window;
     without, drives the harness's current tab. max_steps caps executed actions (model calls are
-    capped at twice that), so a stuck run cannot burn a small API quota."""
-    return _skill.run(goal, url, max_steps)
+    capped at twice that), so a stuck run cannot burn a small API quota. done_when(page) -> bool
+    ends the run as done without a model call (page has url, title, text, actions)."""
+    return _skill.run(goal, url, max_steps, done_when)
 
 
 def jev_choose(goal):

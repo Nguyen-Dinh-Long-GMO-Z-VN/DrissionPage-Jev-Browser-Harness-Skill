@@ -44,10 +44,11 @@ def _open(url=None, port=9222):
 _skill = Skill(_open, DrissionBrowser.close)
 
 
-def jev_run(goal, url=None, max_steps=20, port=9222):
+def jev_run(goal, url=None, max_steps=20, port=9222, done_when=None):
     """Run the full Jev loop and return a result dict. `max_steps` caps executed actions
-    (model calls are capped at twice that). With url= the run uses its own tab and closes it."""
-    return _skill.run(goal, url, max_steps, port=port)
+    (model calls are capped at twice that). With url= the run uses its own tab and closes it.
+    done_when(page) -> bool ends the run as done without a model call."""
+    return _skill.run(goal, url, max_steps, done_when, port=port)
 
 
 def jev_choose(goal, port=9222):

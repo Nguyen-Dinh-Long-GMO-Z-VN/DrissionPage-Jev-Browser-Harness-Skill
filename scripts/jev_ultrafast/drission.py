@@ -60,6 +60,7 @@ class DrissionBrowser(Browser):
             self.call("Emulation.setDeviceMetricsOverride", width=1120, height=780, deviceScaleFactor=1, mobile=False)
         # Keep rAF/menus rendering in a background tab without activating the user's Chrome tab.
         self.call("Emulation.setFocusEmulationEnabled", enabled=True)
+        self._track_requests()
         self.owned = owned
         self._released = False
 

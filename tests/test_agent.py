@@ -620,3 +620,65 @@ def test_toggle_button_pressed_state_reaches_the_model(monkeypatch):
     model.choose(p, "Show nonstop flights", [])
     assert sent[0]["state"]["elements"][0]["pressed"] == "true"
     assert sent[0]["questions"]["click_target"]["criteria"]["1"]["pressed"] == "true"
+
+
+def terminal(choice_id, confidence=1.0):
+    return {**decision(choice_id), "operation": choice_id, "target": None, "confidence": confidence}
+
+
+def test_a_doubtful_done_needs_a_second_vote(runner):
+    runner.state["decision"] = terminal("DONE", 0.4)
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["status"] == "ready"
+    runner.state["decision"] = terminal("DONE", 0.4)
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["status"] == "done" and runner.state["done_by"] == "model"
+
+
+def test_a_confident_done_ends_the_run_at_once(runner):
+    runner.state["decision"] = terminal("DONE", 0.9)
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["status"] == "done"
+
+
+def test_an_action_between_doubtful_dones_resets_the_vote(runner):
+    runner.state["decision"] = terminal("DONE", 0.4)
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    runner.state["decision"] = decision("e3")
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    runner.state["decision"] = terminal("DONE", 0.4)
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["status"] == "ready"
+
+
+def test_a_first_blocked_waits_for_the_page_and_decides_again(runner):
+    runner.state["decision"] = terminal("BLOCKED")
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["status"] == "ready"
+    runner.state["browser"].expect_change.assert_called_once()
+    runner.state["browser"].observe.assert_called_once()
+    runner.state["browser"].act.assert_not_called()
+    runner.state["decision"] = terminal("BLOCKED")
+    runner.command("act", {"fingerprint": runner.state["page"]["fingerprint"]})
+    assert runner.state["status"] == "blocked"
+
+
+def test_done_when_ends_the_run_without_a_model_call(runner, monkeypatch):
+    chooser = Mock()
+    monkeypatch.setattr(loop, "choose", chooser)
+    runner.done_when = lambda page: page["url"].endswith("example.test/")
+    runner.state["status"] = "ready"
+    runner.state["decision"] = None
+    runner.command("tick")
+    assert runner.state["status"] == "done" and runner.state["done_by"] == "code"
+    chooser.assert_not_called()
+    runner.state["browser"].act.assert_not_called()
+
+
+def test_expect_change_makes_the_next_observation_wait_like_wait():
+    import jev_ultrafast.browser as browser
+
+    b = browser.Browser.__new__(browser.Browser)
+    b.after_input = None
+    b.expect_change()
+    assert b.after_input["kind"] == "wait"

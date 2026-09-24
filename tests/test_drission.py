@@ -22,7 +22,11 @@ def test_from_tab_enables_focus_and_leaves_the_tab_open():
     tab = make_tab()
     b = DrissionBrowser.from_tab(tab)
     assert (b.target, b.after_input) == (None, None)
-    assert tab.run_cdp.call_args.kwargs == {"enabled": True}
+    assert [c.args[0] for c in tab.run_cdp.call_args_list] == [
+        "Emulation.setFocusEmulationEnabled", "Page.enable", "Page.addScriptToEvaluateOnNewDocument",
+        "Runtime.evaluate",
+    ]
+    assert tab.run_cdp.call_args_list[0].kwargs == {"enabled": True}
     b.close()
     b.close()
     tab.close.assert_not_called()

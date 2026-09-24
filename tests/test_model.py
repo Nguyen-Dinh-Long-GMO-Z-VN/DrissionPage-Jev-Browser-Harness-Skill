@@ -80,10 +80,12 @@ def test_browser_from_session_enables_focus_and_network(monkeypatch):
     b = browser.Browser.from_session("session-1")
     assert (b.session, b.target, b.after_input) == ("session-1", None, None)
     methods = [c.args[0] for c in cdp.call_args_list]
-    assert methods == ["Emulation.setFocusEmulationEnabled", "Network.enable"]
+    # Request tracking is installed for later documents and for the current one.
+    assert methods == ["Emulation.setFocusEmulationEnabled", "Network.enable", "Page.enable",
+                       "Page.addScriptToEvaluateOnNewDocument", "Runtime.evaluate"]
     assert all(c.kwargs["session_id"] == "session-1" for c in cdp.call_args_list)
     b.close()  # attached tabs are not owned; nothing to close
-    assert cdp.call_count == 2
+    assert cdp.call_count == 5
 
 
 def test_agent_attach_observes_once_and_reuses_the_browser():

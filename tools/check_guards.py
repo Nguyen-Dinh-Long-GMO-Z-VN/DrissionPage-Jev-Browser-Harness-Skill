@@ -1,6 +1,8 @@
 """Local-browser freshness/execution regressions. No model calls or external websites."""
 
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import quote
 
 from jev_ultrafast.browser import Browser, StalePage
@@ -15,7 +17,25 @@ HTML = """<!doctype html><title>Guard checks</title>
 <p id="outside">Unrelated offscreen text</p>"""
 
 
+class Slow(BaseHTTPRequestHandler):
+    """A local endpoint that answers after ?ms= milliseconds, so a request stays in flight."""
+
+    def do_GET(self):
+        if "ms=" in self.path:
+            time.sleep(int(self.path.split("ms=")[1]) / 1000)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html")
+        self.end_headers()
+        self.wfile.write(b"<!doctype html><title>Network checks</title><p>ok</p>")
+
+    def log_message(self, *_args):
+        pass
+
+
 def main():
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Slow)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    slow = f"http://127.0.0.1:{server.server_port}/slow?ms="
     browser = Browser("data:text/html," + quote(HTML))
     passed = []
     try:
@@ -210,6 +230,40 @@ def main():
         assert waited < 0.8, waited
         passed.append(f"WAIT on a page that stays still returns early ({waited * 1000:.0f} ms)")
 
+        # The page changes at once ("Loading") but its data arrives 1.2 s later (upstream PR #124).
+        # Served from the local server: a data: page may not fetch from 127.0.0.1.
+        browser.call("Page.navigate", url=slow.split("slow?")[0])
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            try:
+                if browser.evaluate("location.protocol+document.readyState") == "http:complete":
+                    break
+            except StalePage:
+                pass
+            time.sleep(0.02)
+        assert browser.evaluate("typeof window.__jevInflight") == "number"
+        browser.evaluate("document.body.innerHTML='<p id=status>Idle</p>'")
+        page = browser.observe(screenshot=False)
+        browser.evaluate("setTimeout(()=>{document.querySelector('#status').textContent='Loading';"
+                         f"fetch('{slow}1200').then(()=>{{document.querySelector('#status').textContent='5 results'}})"
+                         "},30)")
+        started = time.monotonic()
+        browser.act(wait, page)
+        page = browser.observe(screenshot=False)
+        waited = time.monotonic() - started
+        assert "5 results" in page["text"] and 1.1 < waited < 3, (page["text"], waited)
+        passed.append(f"WAIT outlasts a request in flight after an early change ({waited * 1000:.0f} ms)")
+
+        browser.evaluate("document.body.innerHTML=" + repr(
+            "<button id=load>Load</button><p id=out>Nothing yet</p>"))
+        browser.evaluate("document.querySelector('#load').onclick=()=>fetch('" + slow + "250')"
+                         ".then(()=>{document.querySelector('#out').textContent='Loaded'})")
+        page = browser.observe(screenshot=False)
+        browser.act(next(a for a in page["actions"] if a["label"] == "Load"), page)
+        page = browser.observe(screenshot=False)
+        assert "Loaded" in page["text"], page["text"]
+        passed.append("the observation after a click waits for a short request")
+
         browser.evaluate("document.body.innerHTML='<button type=button id=nonstop aria-pressed=false>Nonstop</button>'")
         page = browser.observe(screenshot=False)
         toggle = next(a for a in page["actions"] if a["label"] == "Nonstop")
@@ -279,6 +333,7 @@ def main():
         passed.append("navigation invalidates the old document")
     finally:
         browser.close()
+        server.shutdown()
     print("\n".join(passed))
     print(f"PASS: {len(passed)} browser guard checks; no model calls")
 

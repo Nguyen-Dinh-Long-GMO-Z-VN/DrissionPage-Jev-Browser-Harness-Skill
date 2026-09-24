@@ -15,6 +15,8 @@ from .questions import MAX_STEPS
 PREFETCH = ThreadPoolExecutor(max_workers=2, thread_name_prefix="jev-text")
 # An observation this recent needs no freshness read before choosing; act() still checks before input.
 RECENT_OBSERVATION_S = 0.05
+# A DONE below this operation confidence is accepted only when chosen twice in a row.
+DONE_MIN_CONFIDENCE = 0.7
 
 
 def initial_state(browser, goal, page, *, record=False):
@@ -46,6 +48,7 @@ def summarize(agent):
         "url": s["page"]["url"],
         "title": s["page"]["title"],
         "steps": len(s["history"]),
+        "done_by": s.get("done_by"),
         "model_calls": len(s["decisions"]),
         "text_calls": len(s["text_calls"]),
         "text_prefetches": s.get("text_prefetches", 0),
@@ -80,13 +83,19 @@ def likely_text_node(decision, page):
 
 class Agent:
     max_steps = MAX_STEPS
+    done_when = None
+    done_min_confidence = DONE_MIN_CONFIDENCE
+    terminal_vote = None
 
-    def __init__(self, url, goals, *, record_dir=None, screenshots=False, max_steps=MAX_STEPS):
+    def __init__(self, url, goals, *, record_dir=None, screenshots=False, max_steps=MAX_STEPS, done_when=None):
+        """`done_when(page)` lets code own completion: when it returns true the run ends as done, with no model
+        call. Use it for an outcome the caller can check itself; the model's DONE is never evidence."""
         task = goals.strip() if isinstance(goals, str) else "\n".join(goals).strip()
         if not task:
             raise ValueError("Supply a task")
         self.pending_text = None
         self.max_steps = max_steps
+        self.done_when = done_when
         warm_connections()  # overlaps TLS setup with page load
         self.browser = Browser(url)
         self.record_dir = Path(record_dir) if record_dir else None
@@ -102,7 +111,7 @@ class Agent:
             (self.record_dir / "000000.jpg").write_bytes(base64.b64decode(page["screenshot"]))
 
     @classmethod
-    def attach(cls, browser, goal, *, screenshots=False, max_steps=MAX_STEPS):
+    def attach(cls, browser, goal, *, screenshots=False, max_steps=MAX_STEPS, done_when=None):
         """Drive an already-attached tab. The caller owns the browser session and detaches it."""
         task = goal.strip()
         if not task:
@@ -111,6 +120,7 @@ class Agent:
         warm_connections()
         agent.pending_text = None
         agent.max_steps = max_steps
+        agent.done_when = done_when
         agent.browser = browser
         agent.record_dir = None
         agent.screenshots = screenshots
@@ -164,6 +174,8 @@ class Agent:
         state = self.state
         try:
             self._predict()
+            if state["status"] == "done":
+                return  # done_when accepted the page; nothing to execute
             self._act({"fingerprint": state["page"]["fingerprint"]})
         except StalePage:
             state["decision"] = None
@@ -188,6 +200,11 @@ class Agent:
         state["decision"] = None
         if state["status"] in {"done", "blocked"}:
             raise ValueError("This run has stopped. Start a fresh demo.")
+        if self.done_when and self.done_when(state["page"]):
+            state["status"], state["done_by"] = "done", "code"
+            state["plan_index"] = 1
+            state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
+            return
         if len(state["decisions"]) >= self.max_steps * 2:
             raise ValueError("Reached the demo's model-call budget")
         self._prefetch_text(state["page"])
@@ -214,7 +231,19 @@ class Agent:
             if not state["browser"].fresh(page):
                 state["status"] = "ready"
                 raise StalePage("Page changed since the decision. Choose again.")
+            vote, self.terminal_vote = self.terminal_vote, selected
+            if selected == "DONE" and decision["confidence"] < self.done_min_confidence and vote != "DONE":
+                state["status"] = "ready"  # A doubtful DONE must be chosen again before it ends the run.
+                return
+            if selected == "BLOCKED" and vote != "BLOCKED":
+                # A first BLOCKED is often a half-loaded page or a menu still opening: let the page change
+                # (WAIT's settle: up to 1.5 s, 0.5 s if nothing moves), then decide again.
+                state["browser"].expect_change()
+                self._observe()
+                state["status"] = "ready"
+                return
             state["status"] = "done" if selected == "DONE" else "blocked"
+            state["done_by"] = "model"
             state["plan_index"] = int(selected == "DONE")
             state["elapsed_ms"] = round((time.perf_counter() - state["started_at"]) * 1000)
             return
@@ -284,6 +313,7 @@ class Agent:
             state["reason"] = f"{action['label']}: outcome unknown after a browser error; inspect the page first."
             raise
         self.pending_text = None
+        self.terminal_vote = None
         # Record execution before observing. A stale post-action observation must not erase the action.
         record(typed=(result or {}).get("typed"))
         try:

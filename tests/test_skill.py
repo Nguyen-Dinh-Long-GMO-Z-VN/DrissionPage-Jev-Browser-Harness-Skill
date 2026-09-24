@@ -86,7 +86,7 @@ def test_run_forwards_target_and_releases(skill, monkeypatch):
     monkeypatch.setattr(skill_module.loop, "summarize", Mock(return_value={"status": "done"}))
     assert skill.run("goal", "http://x", 5, port=9333) == {"status": "done"}
     skill.open_browser.assert_called_once_with("http://x", port=9333)
-    attach.assert_called_once_with(skill.browser, "goal", max_steps=5)
+    attach.assert_called_once_with(skill.browser, "goal", max_steps=5, done_when=None)
     skill.release.assert_called_once_with(skill.browser)
 
 

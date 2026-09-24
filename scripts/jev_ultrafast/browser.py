@@ -14,11 +14,33 @@ from pathlib import Path
 READ_STATE = Path(__file__).with_name("snapshot.js").read_text()
 MARKER = f"(() => {{ const state={READ_STATE}; return state?.marker ?? null; }})()"
 
+# Counts the page's own fetch/XHR requests in flight and marks a navigation that has started (a form submit, a
+# redirect), so the waits below can tell "loading" from "still". A fetch counts until its response headers arrive.
+# Installed on every new document of an observed tab and on the current one when attaching (from upstream #124).
+TRACK_REQUESTS = """(() => {
+  if (window.__jevInflight !== undefined) return;
+  window.__jevInflight = 0;
+  const done = () => { window.__jevInflight = Math.max(0, window.__jevInflight - 1); };
+  const fetch = window.fetch;
+  if (fetch) window.fetch = function (...args) {
+    window.__jevInflight++;
+    try { return fetch.apply(this, args).finally(done); } catch (error) { done(); throw error; }
+  };
+  const send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (...args) {
+    window.__jevInflight++;
+    try { this.addEventListener('loadend', done, {once: true}); return send.apply(this, args); }
+    catch (error) { done(); throw error; }
+  };
+  addEventListener('beforeunload', () => { window.__jevNavigating = Date.now(); });
+})()"""
+
 # Read-only wait after input, so the next decision sees the page the input produced rather than a frame of
 # its transition (a decision on a moving page goes stale and costs a whole model call). Autocomplete fields
-# wait for visible options. Other input waits at least 32 ms, then until the DOM has been quiet for 50 ms and no
-# finite animation runs, capped at 400 ms. WAIT waits for the page to change and go quiet (at least 100 ms),
-# returns after 500 ms if nothing changes, and is capped at 1.5 s.
+# wait for visible options. Other input waits at least 32 ms, then until the DOM has been quiet for 50 ms, no
+# finite animation runs, and no request is in flight, capped at 400 ms. WAIT returns once the page has changed
+# and then been quiet for 100 ms with the network idle for 200 ms; after 500 ms if nothing changes and the network
+# is idle; and while requests are in flight it keeps waiting, up to 10 s.
 SETTLE_AFTER_INPUT = """(action => new Promise(resolve => {
   const cache=window.__jevFast, start=performance.now();
   const field=cache?.nodes.get(action.node);
@@ -27,8 +49,11 @@ SETTLE_AFTER_INPUT = """(action => new Promise(resolve => {
   // Poll on timers, not requestAnimationFrame: a background tab can stop producing frames entirely.
   let ticks=0, stopped=false;
   const finish=()=>{stopped=true;resolve()};
-  setTimeout(finish,autocomplete ? 200 : waiting ? 1500 : 400);
+  setTimeout(finish,autocomplete ? 200 : waiting ? 10000 : 400);
   const quiet=ms=>performance.now()-(cache?.changed ?? 0)>=ms;
+  let idleSince=start;
+  const busy=()=>(window.__jevInflight||0)>0 ||
+    (!!window.__jevNavigating && Date.now()-window.__jevNavigating<15000);
   // A pending animation (no start time) may never start in a background tab; only started, finite ones count.
   const animating=()=>document.getAnimations().some(a=>a.playState==='running' && a.startTime!==null &&
     a.effect?.getComputedTiming().endTime!==Infinity);
@@ -44,10 +69,13 @@ SETTLE_AFTER_INPUT = """(action => new Promise(resolve => {
   };
   const ready=()=>{
     if (stopped) return;
+    const now=performance.now();
+    if (busy()) idleSince=Infinity; else if (idleSince===Infinity) idleSince=now;
+    const idle=ms=>now-idleSince>=ms;
     const settled=autocomplete ? suggestions() :
-      waiting ? !animating() && (cache?.changed>start ? performance.now()-start>=100 && quiet(100) :
-        performance.now()-start>=500) :
-      quiet(50) && !animating();
+      waiting ? !animating() && (cache?.changed>start ? now-start>=100 && quiet(100) && idle(200) :
+        idle(500) && now-start>=500) :
+      quiet(50) && !animating() && !busy();
     if (++ticks>=2 && settled) finish();
     else setTimeout(ready,16);
   };
@@ -82,6 +110,7 @@ class Browser:
         # Start network recording at attach, before any traffic: sessions attached
         # directly get no daemon auto-enable, and undrained events buffer bounded.
         self.call("Network.enable")
+        self._track_requests()
         self.call("Page.navigate", url=url)
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
@@ -96,6 +125,7 @@ class Browser:
         browser.target, browser.session, browser.after_input = None, session, None
         browser.call("Emulation.setFocusEmulationEnabled", enabled=True)
         browser.call("Network.enable")  # the daemon only auto-enables its own sessions
+        browser._track_requests()
         return browser
 
     def call(self, method, **params):
@@ -129,6 +159,19 @@ class Browser:
                     raise
                 self._wait_ready()
                 time.sleep(0.02)
+
+    def _track_requests(self):
+        """Count in-flight requests in this document and every later one, for the waits. Best effort."""
+        try:
+            self.call("Page.enable")
+            self.call("Page.addScriptToEvaluateOnNewDocument", source=TRACK_REQUESTS)
+            self.call("Runtime.evaluate", expression=TRACK_REQUESTS)
+        except Exception:
+            pass
+
+    def expect_change(self):
+        """Make the next observe() wait as after WAIT: for the page to change and go quiet. Read-only."""
+        self.after_input = {"id": "wait", "kind": "wait"}
 
     def settle(self, page, screenshot=False, *, young_ms=2500, quiet=0.1, cap=0.5):
         """Return a page that has held still for `quiet` seconds, re-observing while it changes.

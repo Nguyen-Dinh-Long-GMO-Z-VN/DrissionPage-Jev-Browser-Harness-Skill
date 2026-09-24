@@ -16,13 +16,14 @@ class Skill:
         self.release = release
         self.pending = None
 
-    def run(self, goal, url=None, max_steps=20, **target):
+    def run(self, goal, url=None, max_steps=20, done_when=None, **target):
         """Run the full loop until done or blocked. `url` opens (and later closes) a dedicated tab.
-        `max_steps` caps executed actions; model calls are capped at twice that."""
+        `max_steps` caps executed actions; model calls are capped at twice that. `done_when(page)` ends the
+        run as done when it returns true, with no model call."""
         loop.warm_connections()  # overlap TLS setup with the page load
         browser = self.open_browser(url, **target)
         try:
-            agent = loop.Agent.attach(browser, goal, max_steps=max_steps)
+            agent = loop.Agent.attach(browser, goal, max_steps=max_steps, done_when=done_when)
             for _ in agent.run():
                 pass
             return loop.summarize(agent)
