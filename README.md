@@ -54,7 +54,9 @@ Open **http://127.0.0.1:8766** and click **Start demo → Run automatically**. T
 
 Chrome connects through Browser Harness, installed by `uv sync`. Run `uv run browser-harness --doctor` if it needs connecting, and allow remote debugging in Chrome when prompted.
 
-`TEXT_MODEL_API_KEY` is an OpenRouter key in the example configuration, and the default configuration uses `inception/mercury-2.5` with reasoning disabled. Any OpenAI-compatible endpoint works with the text helper: set the model, endpoint, and reasoning setting in `.env`. Credentials stay server-side and `.env` is git-ignored.
+`TEXT_MODEL_API_KEY` is a Google AI Studio key in the example configuration, which uses `gemini-3.5-flash-lite` through Google's OpenAI-compatible endpoint with reasoning at its lowest level. If `TEXT_MODEL*` is unset, the code falls back to OpenRouter and `inception/mercury-2.5`. Any OpenAI-compatible endpoint works with the text helper: set the model, endpoint, and reasoning setting in `.env`. Credentials stay server-side and `.env` is git-ignored.
+
+Google retires and rate-limits Gemini models over time. `gemini-2.5-flash` returned HTTP 404 for a new key on 2026-09-25, `gemini-3.8-flash` returned HTTP 503 under load and rejects the `minimal` reasoning level that `TEXT_MODEL_REASONING=none` sends. `gemini-3.5-flash-lite` accepted both `minimal` and `low` in a one-call probe.
 
 ## Use it as a skill
 
